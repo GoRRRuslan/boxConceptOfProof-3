@@ -1,0 +1,25 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "moduleResolution": "bundler",
+    "jsx": "react-native",
+    "paths": {
+      "@app/*": ["./src/app/*"],
+      "@i18next/*": ["./src/i18next/*"],
+      "@configs/*": ["./src/configs/*"],
+      "@assets/*": ["./src/assets/*"],
+      "@components/*": ["./src/components/*"],
+      "@flows/*": ["./src/flows/*"],
+      "@models/*": ["./src/models/*"],
+      "@navigation/*": ["./src/navigation/*"],
+      "@networking/*": ["./src/networking/*"],
+      "@services/*": ["./src/services/*"],
+      "@utils/*": ["./src/utils/*"]
+    },
+    "exactOptionalPropertyTypes": true,
+    "types": ["jest", "node"]
+  },
+  "include": ["index.ts", "app.config.ts", "src/**/*", "__tests__", "declarations.d.ts", "jest.setup.ts"]
+}

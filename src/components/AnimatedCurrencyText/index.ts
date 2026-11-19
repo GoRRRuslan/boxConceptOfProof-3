@@ -1,0 +1,1 @@
+export { AnimatedCurrencyText } from './AnimatedCurrencyText'
