@@ -122,6 +122,7 @@ export class SceneReference {
             this.entranceStartedAt = now
           }
         }
+
         break
       case ESceneCommandKind.Scroll:
         this.scrollOffset = a
@@ -172,7 +173,7 @@ export class SceneReference {
   // The body of the old render callback, one frame.
   public computeFrame(now: number, rawDeltaSeconds: number): ISceneFrame {
     const deltaSeconds = Math.min(rawDeltaSeconds, MAXIMUM_FRAME_SECONDS)
-    const scene = this.scene
+    const { scene } = this
     const focusLinearProgress = getFocusProgress(scene, now)
     const focusProgress = easeInOutCubic(focusLinearProgress)
     const dollyProgress = easeOutBack(focusLinearProgress)
@@ -187,7 +188,7 @@ export class SceneReference {
       this.drag = stepDragInertia(this.drag, deltaSeconds, now, isAutoRotateAllowed)
     }
 
-    const drag = this.drag
+    const { drag } = this
     const [tiltX, tiltY] = scene.focusTarget === 1 ? this.tilt : [0, 0]
     const pressScale = computePressScale(this.press, now)
     const entranceStart = this.entranceStartedAt ?? Number.MAX_VALUE

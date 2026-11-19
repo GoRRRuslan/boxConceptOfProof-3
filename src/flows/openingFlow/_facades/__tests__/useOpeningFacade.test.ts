@@ -5,7 +5,6 @@ import { createElement, type ReactNode } from 'react'
 import '@i18next/i18init'
 import {
   ANTICIPATION_DURATION_MILLISECONDS,
-  DRAG_INERTIA_MAXIMUM_MILLISECONDS,
   FOCUS_DURATION_MILLISECONDS,
   LID_OPEN_DURATION_MILLISECONDS,
   OPEN_SWIPE_DISTANCE,
@@ -14,6 +13,7 @@ import {
 } from '@flows/openingFlow/_config/openingConfig'
 import { useOpeningFacade } from '@flows/openingFlow/_facades/useOpeningFacade'
 import { EOpeningPhase } from '@flows/openingFlow/_types'
+import { MysteryScene } from '@mysteryScene'
 import useStore from '@models/mainStorage/_storeConfigured'
 import { resetAllSlices } from '@models/mainStorage/_storeConfigured/ResetterStore'
 import { INITIAL_BALANCE_IN_CENTS } from '@models/mainStorage/WalletStore/initialState'
@@ -24,8 +24,6 @@ import { WATCH_CATALOGUE } from '@networking/api/MysteryBoxApi/_mockData/watchCa
 import { EBoxIdentifier, EMockFailureMode } from '@networking/api/MysteryBoxApi/_types'
 import { hapticFeedback } from '@services/haptics/hapticFeedback'
 import { soundEffects } from '@services/sounds/soundEffects'
-
-const mockSceneStates: unknown[] = []
 
 jest.mock('react-native-gesture-handler', () => ({
   usePanGesture: (config: unknown) => config,
@@ -61,21 +59,6 @@ jest.mock('@services/haptics/hapticFeedback', () => ({
     selection: jest.fn(),
     anticipation: jest.fn(),
     rarityReveal: jest.fn(),
-  },
-}))
-
-jest.mock('react-native-worklets', () => ({
-  createSynchronizable: (initial: unknown) => {
-    let value = initial
-
-    return {
-      getBlocking: () => value,
-      setBlocking: (next: unknown) => {
-        value = next
-
-        mockSceneStates.push(next)
-      },
-    }
   },
 }))
 
@@ -117,8 +100,6 @@ describe('useOpeningFacade', () => {
 
     // A fresh "server": purchase keys of earlier tests must not leak into this one.
     MysteryBoxApi.resetServer()
-
-    mockSceneStates.length = 0
 
     jest.clearAllMocks()
   })
@@ -310,7 +291,9 @@ describe('useOpeningFacade', () => {
       result.current.handleCardPress(EBoxIdentifier.Elite)
     })
 
-    expect(result.current.sceneState.getBlocking()).toMatchObject({ focusedCardIndex: 2, focusTarget: 1, lidTarget: 0 })
+    expect(MysteryScene.focus).toHaveBeenCalledWith(2)
+
+    expect(MysteryScene.openLid).not.toHaveBeenCalled()
 
     await act(() => {
       result.current.primaryButton?.onPress()
@@ -324,49 +307,7 @@ describe('useOpeningFacade', () => {
       result.current.primaryButton?.onPress()
     })
 
-    expect(result.current.sceneState.getBlocking()).toMatchObject({ lidTarget: 1 })
-  })
-
-  it('keeps the renderer busy after the finger lifts, until the inertia has played out', async () => {
-    jest.useFakeTimers()
-
-    const { result } = await renderFacade()
-    const gesture = (result.current.gesture as unknown as { pan: Record<string, (event?: unknown) => void> }).pan
-
-    await act(() => {
-      gesture.onActivate()
-    })
-
-    expect(result.current.isDragging).toBe(true)
-
-    await act(() => {
-      gesture.onFinalize()
-    })
-
-    expect(result.current.isDragging).toBe(true)
-
-    await act(async () => {
-      await jest.advanceTimersByTimeAsync(DRAG_INERTIA_MAXIMUM_MILLISECONDS + 10)
-    })
-
-    expect(result.current.isDragging).toBe(false)
-
-    jest.useRealTimers()
-  })
-
-  it('does not keep the renderer busy after a plain tap that never became a drag', async () => {
-    jest.useFakeTimers()
-
-    const { result } = await renderFacade()
-    const gesture = (result.current.gesture as unknown as { pan: Record<string, (event?: unknown) => void> }).pan
-
-    await act(() => {
-      gesture.onFinalize()
-    })
-
-    expect(result.current.isDragging).toBe(false)
-
-    jest.useRealTimers()
+    expect(MysteryScene.openLid).toHaveBeenCalledTimes(1)
   })
 
   describe('opening: anticipation, light, reveal', () => {
@@ -393,9 +334,8 @@ describe('useOpeningFacade', () => {
         result.current.primaryButton?.onPress()
       })
 
-      const scene = result.current.sceneState.getBlocking() as { lidStartedAtMilliseconds: number; openStartedAtMilliseconds: number }
-
-      expect(scene.lidStartedAtMilliseconds - scene.openStartedAtMilliseconds).toBe(ANTICIPATION_DURATION_MILLISECONDS)
+      // The native scene starts the lid itself after the anticipation (its timing is covered by the native parity tests).
+      expect(MysteryScene.openLid).toHaveBeenCalledTimes(1)
 
       expect(hapticFeedback.anticipation).toHaveBeenCalled()
 
@@ -446,7 +386,7 @@ describe('useOpeningFacade', () => {
           await jest.advanceTimersByTimeAsync(TUCK_DELAY_MILLISECONDS)
         })
 
-        expect(result.current.sceneState.getBlocking()).toMatchObject({ tuckTarget: 1 })
+        expect(MysteryScene.tuck).toHaveBeenCalledTimes(1)
 
         await act(async () => {
           await jest.advanceTimersByTimeAsync(TUCK_DURATION_MILLISECONDS)
@@ -473,7 +413,9 @@ describe('useOpeningFacade', () => {
           await jest.advanceTimersByTimeAsync(TUCK_DELAY_MILLISECONDS + TUCK_DURATION_MILLISECONDS + 1000)
         })
 
-        expect(result.current.sceneState.getBlocking()).toMatchObject({ tuckTarget: 0 })
+        expect(MysteryScene.tuck).not.toHaveBeenCalled()
+
+        expect(MysteryScene.closeBox).toHaveBeenCalledTimes(1)
 
         expect(result.current.isBoxPutAway).toBe(false)
 
@@ -505,7 +447,9 @@ describe('useOpeningFacade', () => {
 
         expect(result.current.phase).toBe(EOpeningPhase.Inspecting)
 
-        expect(result.current.sceneState.getBlocking()).toMatchObject({ tuckTarget: 0, focusTarget: 1 })
+        expect(MysteryScene.tuck).not.toHaveBeenCalled()
+
+        expect(MysteryScene.focus).toHaveBeenCalledTimes(2)
 
         jest.useRealTimers()
       })
@@ -518,10 +462,8 @@ describe('useOpeningFacade', () => {
 
       await buyAndGetReady(result)
 
-      const scene = result.current.sceneState.getBlocking() as { glowColorLinear: number[] }
-
       // The first purchase is a Casio: a common prize with a soft blue-grey glow.
-      expect(scene.glowColorLinear).toEqual([0.35, 0.5, 0.58])
+      expect(MysteryScene.setGlowColor).toHaveBeenCalledWith(0.35, 0.5, 0.58)
 
       jest.useRealTimers()
     })
@@ -595,7 +537,7 @@ describe('useOpeningFacade', () => {
         tap: Record<string, (event?: unknown) => void>
       }
 
-    it('pinch zooms the box within limits', async () => {
+    it('pinch sends the zoom change to the scene (the limits live in the native scene)', async () => {
       const { result } = await renderFacade()
 
       await act(() => {
@@ -606,16 +548,10 @@ describe('useOpeningFacade', () => {
         getGestures(result).pinch.onUpdate({ scaleChange: 1.5 })
       })
 
-      expect((result.current.dragState.getBlocking() as { zoom: number }).zoom).toBeCloseTo(1.5)
-
-      await act(() => {
-        getGestures(result).pinch.onUpdate({ scaleChange: 10 })
-      })
-
-      expect((result.current.dragState.getBlocking() as { zoom: number }).zoom).toBe(2)
+      expect(MysteryScene.pinch).toHaveBeenLastCalledWith(1.5)
     })
 
-    it('a double tap resets the turn and the zoom', async () => {
+    it('a double tap asks the scene to glide back to the start', async () => {
       const { result } = await renderFacade()
 
       await act(() => {
@@ -628,7 +564,7 @@ describe('useOpeningFacade', () => {
         getGestures(result).tap.onActivate()
       })
 
-      expect((result.current.dragState.getBlocking() as { isResetting: boolean }).isResetting).toBe(true)
+      expect(MysteryScene.resetView).toHaveBeenCalledTimes(1)
     })
 
     it('dragging turns the box while inspecting', async () => {
@@ -642,7 +578,21 @@ describe('useOpeningFacade', () => {
         getGestures(result).pan.onUpdate({ changeX: 50, changeY: 10 })
       })
 
-      expect((result.current.dragState.getBlocking() as { yawRadians: number }).yawRadians).toBeGreaterThan(0)
+      expect(MysteryScene.dragBy).toHaveBeenCalledWith(50, 10)
+    })
+
+    it('lifting the finger hands the speed to the scene, which keeps the box turning (inertia)', async () => {
+      const { result } = await renderFacade()
+
+      await act(() => {
+        result.current.handleCardPress(EBoxIdentifier.Starter)
+      })
+
+      await act(() => {
+        getGestures(result).pan.onDeactivate({ velocityX: 900, velocityY: -300, translationY: 0 })
+      })
+
+      expect(MysteryScene.dragEnd).toHaveBeenCalledWith(900, -300)
     })
 
     it('swiping up on a bought box opens it, a short swipe does not', async () => {
@@ -696,7 +646,7 @@ describe('useOpeningFacade', () => {
         getGestures(result).pan.onUpdate({ changeX: 0, changeY: 80 })
       })
 
-      expect((result.current.dragState.getBlocking() as { pitchRadians: number }).pitchRadians).toBe(0)
+      expect(MysteryScene.dragBy).toHaveBeenLastCalledWith(0, 0)
 
       jest.useRealTimers()
     })

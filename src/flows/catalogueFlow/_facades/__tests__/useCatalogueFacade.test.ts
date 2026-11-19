@@ -4,12 +4,12 @@ import { createElement, type ReactNode } from 'react'
 
 import '@i18next/i18init'
 import { useCatalogueFacade } from '@flows/catalogueFlow/_facades/useCatalogueFacade'
+import { MysteryScene } from '@mysteryScene'
 import useStore from '@models/mainStorage/_storeConfigured'
 import { resetAllSlices } from '@models/mainStorage/_storeConfigured/ResetterStore'
 import { mockApiSettings, resetMockApiSettings } from '@networking/api/MysteryBoxApi/_config/mockApiSettings'
 import { BOX_CATALOGUE } from '@networking/api/MysteryBoxApi/_mockData/boxCatalogue'
 
-const mockSetBlocking = jest.fn()
 const mockSetParams = jest.fn()
 
 jest.mock('@react-navigation/native', () => ({ useNavigation: () => ({ setParams: mockSetParams }) }))
@@ -41,24 +41,8 @@ jest.mock('@services/haptics/hapticFeedback', () => ({
   },
 }))
 
-jest.mock('react-native-worklets', () => ({
-  createSynchronizable: (initial: unknown) => {
-    let value = initial
-
-    return {
-      getBlocking: () => value,
-      setBlocking: (next: unknown) => {
-        value = next
-
-        mockSetBlocking(next)
-      },
-    }
-  },
-  scheduleOnRN: jest.fn(),
-}))
-
 jest.mock('@services/performance/useRenderFpsMeter', () => ({
-  useRenderFpsMeter: () => ({ renderCallback: jest.fn(), renderFrameStats: null, isRenderPaused: false }),
+  useRenderFpsMeter: () => ({ handleFrameStats: jest.fn(), renderFrameStats: null, isRenderPaused: false }),
 }))
 
 const createWrapper = () => {
@@ -77,7 +61,7 @@ describe('useCatalogueFacade', () => {
 
     mockApiSettings.latencyInMilliseconds = 0
 
-    mockSetBlocking.mockClear()
+    jest.clearAllMocks()
   })
 
   it('loads the boxes and builds one card per box', async () => {
@@ -112,44 +96,31 @@ describe('useCatalogueFacade', () => {
     expect(result.current.balanceInCents).toBe(55_000)
   })
 
-  it('writes the scroll offset for the 3D scene and reports scrolling until the list is idle', async () => {
-    jest.useFakeTimers()
-
+  it('sends every scroll offset straight to the native scene', async () => {
     const { result } = await renderHook(() => useCatalogueFacade(), { wrapper: createWrapper() })
 
     await act(() => {
       result.current.handleScroll(scrollEvent(240))
+
+      result.current.handleScroll(scrollEvent(255))
     })
 
-    expect(mockSetBlocking).toHaveBeenCalledWith(240)
+    expect(MysteryScene.setScrollOffset).toHaveBeenNthCalledWith(1, 240)
 
-    expect(result.current.isRenderContinuous).toBe(true)
-
-    await act(async () => {
-      await jest.advanceTimersByTimeAsync(300)
-    })
-
-    expect(result.current.isRenderContinuous).toBe(false)
-
-    jest.useRealTimers()
+    expect(MysteryScene.setScrollOffset).toHaveBeenNthCalledWith(2, 255)
   })
 
-  it('keeps reporting scrolling while scroll events keep arriving', async () => {
-    jest.useFakeTimers()
-
+  it('gives the scene one look (colour and finish) per card', async () => {
     const { result } = await renderHook(() => useCatalogueFacade(), { wrapper: createWrapper() })
 
-    for (const offset of [10, 20, 30, 40]) {
-      await act(async () => {
-        result.current.handleScroll(scrollEvent(offset))
+    await waitFor(() => {
+      expect(result.current.sceneCardLooks).toHaveLength(BOX_CATALOGUE.length)
+    })
 
-        await jest.advanceTimersByTimeAsync(100)
-      })
-    }
-
-    expect(result.current.isRenderContinuous).toBe(true)
-
-    jest.useRealTimers()
+    expect(result.current.sceneCardLooks[0]).toEqual({
+      color: [result.current.cards[0].colorLinearRgba[0], result.current.cards[0].colorLinearRgba[1], result.current.cards[0].colorLinearRgba[2]],
+      ...result.current.cards[0].finish,
+    })
   })
 
   it('stores the viewport size reported by the list layout', async () => {
@@ -175,40 +146,12 @@ describe('useCatalogueFacade', () => {
       result.current.handleCardPressIn(BOX_CATALOGUE[2].identifier)
     })
 
-    expect(result.current.sceneSync.pressState.getBlocking()).toMatchObject({ cardIndex: 2, isPressed: true })
+    expect(MysteryScene.pressIn).toHaveBeenCalledWith(2)
 
     await act(() => {
       result.current.handleCardPressOut()
     })
 
-    expect(result.current.sceneSync.pressState.getBlocking()).toMatchObject({ cardIndex: 2, isPressed: false })
-  })
-
-  it('keeps the renderer busy while a card is pressed and until the box has bounced back', async () => {
-    jest.useFakeTimers()
-
-    const { result } = await renderHook(() => useCatalogueFacade(), { wrapper: createWrapper() })
-
-    expect(result.current.isRenderContinuous).toBe(false)
-
-    await act(() => {
-      result.current.handleCardPressIn(BOX_CATALOGUE[0].identifier)
-    })
-
-    expect(result.current.isRenderContinuous).toBe(true)
-
-    await act(() => {
-      result.current.handleCardPressOut()
-    })
-
-    expect(result.current.isRenderContinuous).toBe(true)
-
-    await act(async () => {
-      await jest.advanceTimersByTimeAsync(400)
-    })
-
-    expect(result.current.isRenderContinuous).toBe(false)
-
-    jest.useRealTimers()
+    expect(MysteryScene.pressOut).toHaveBeenCalledTimes(1)
   })
 })

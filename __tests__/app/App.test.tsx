@@ -3,12 +3,6 @@ import { render, screen } from '@testing-library/react-native'
 import '@i18next/i18init'
 import App from '@app/App'
 
-jest.mock('@flows/spikeFlow/screens/FilamentSpikeScreen', () => {
-  const { View } = jest.requireActual('react-native')
-
-  return { FilamentSpikeScreen: () => <View testID="filamentSpikeScreen" /> }
-})
-
 jest.mock('@flows/catalogueFlow/screens/CatalogueScreen', () => {
   const { View } = jest.requireActual('react-native')
 

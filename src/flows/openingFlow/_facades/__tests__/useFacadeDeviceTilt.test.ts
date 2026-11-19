@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react-native'
 
+import { MysteryScene } from '@mysteryScene'
 import { useFacadeDeviceTilt } from '@flows/openingFlow/_facades/useFacadeDeviceTilt'
 
 type TMotionListener = (data: { rotation?: { beta: number; gamma: number } }) => void
@@ -20,15 +21,6 @@ jest.mock('expo-sensors', () => ({
   },
 }))
 
-const createTilt = () => {
-  const writes: [number, number][] = []
-
-  return {
-    tilt: { getBlocking: () => writes[writes.length - 1] ?? [0, 0], setBlocking: (value: [number, number]) => writes.push(value) } as never,
-    writes,
-  }
-}
-
 const flush = () =>
   act(async () => {
     await Promise.resolve()
@@ -41,13 +33,13 @@ describe('useFacadeDeviceTilt', () => {
     mockIsAvailable = true
 
     mockRemove.mockClear()
+
+    jest.clearAllMocks()
   })
 
   it('does nothing while no box is open', async () => {
-    const { tilt } = createTilt()
-
     await renderHook(() => {
-      useFacadeDeviceTilt({ isActive: false, tilt })
+      useFacadeDeviceTilt({ isActive: false })
     })
 
     await flush()
@@ -56,10 +48,9 @@ describe('useFacadeDeviceTilt', () => {
   })
 
   it('follows the tilt of the phone, relative to how it was held at the start, smoothed and within -1..1', async () => {
-    const { tilt, writes } = createTilt()
 
     await renderHook(() => {
-      useFacadeDeviceTilt({ isActive: true, tilt })
+      useFacadeDeviceTilt({ isActive: true })
     })
 
     await flush()
@@ -69,7 +60,7 @@ describe('useFacadeDeviceTilt', () => {
     })
 
     // First sample defines "straight": no tilt yet.
-    expect(writes[writes.length - 1]).toEqual([0, 0])
+    expect(MysteryScene.setTilt).toHaveBeenLastCalledWith(0, 0)
 
     for (let sample = 0; sample < 60; sample += 1) {
       await act(() => {
@@ -77,7 +68,7 @@ describe('useFacadeDeviceTilt', () => {
       })
     }
 
-    const [x, y] = writes[writes.length - 1]
+    const [x, y] = jest.mocked(MysteryScene.setTilt).mock.lastCall ?? [0, 0]
 
     expect(x).toBeGreaterThan(0.9)
 
@@ -87,10 +78,9 @@ describe('useFacadeDeviceTilt', () => {
   })
 
   it('stops listening and resets the tilt when the box is closed', async () => {
-    const { tilt, writes } = createTilt()
     const { rerender } = await renderHook(
       (isActive: boolean) => {
-        useFacadeDeviceTilt({ isActive, tilt })
+        useFacadeDeviceTilt({ isActive })
       },
       { initialProps: true },
     )
@@ -101,16 +91,14 @@ describe('useFacadeDeviceTilt', () => {
 
     expect(mockRemove).toHaveBeenCalledTimes(1)
 
-    expect(writes[writes.length - 1]).toEqual([0, 0])
+    expect(MysteryScene.setTilt).toHaveBeenLastCalledWith(0, 0)
   })
 
   it('does not subscribe on a device without a motion sensor', async () => {
     mockIsAvailable = false
 
-    const { tilt } = createTilt()
-
     await renderHook(() => {
-      useFacadeDeviceTilt({ isActive: true, tilt })
+      useFacadeDeviceTilt({ isActive: true })
     })
 
     await flush()
@@ -119,10 +107,9 @@ describe('useFacadeDeviceTilt', () => {
   })
 
   it('ignores readings without a rotation (an emulator without a motion sensor) instead of crashing', async () => {
-    const { tilt, writes } = createTilt()
 
     await renderHook(() => {
-      useFacadeDeviceTilt({ isActive: true, tilt })
+      useFacadeDeviceTilt({ isActive: true })
     })
 
     await flush()
@@ -135,6 +122,6 @@ describe('useFacadeDeviceTilt', () => {
       }),
     ).resolves.toBeUndefined()
 
-    expect(writes).toEqual([])
+    expect(MysteryScene.setTilt).not.toHaveBeenCalled()
   })
 })
