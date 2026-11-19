@@ -25,6 +25,7 @@ class MysterySceneView(context: Context, appContext: AppContext) : ExpoView(cont
   private val onModelLoaded by EventDispatcher<Map<String, Any>>()
   private val onFrameStats by EventDispatcher<Map<String, Any>>()
   private val onSceneError by EventDispatcher<Map<String, Any>>()
+  private val onScrollSourceChange by EventDispatcher<Map<String, Any>>()
 
   var isFrameStatsEnabled = false
 
@@ -89,6 +90,48 @@ class MysterySceneView(context: Context, appContext: AppContext) : ExpoView(cont
     loadModel(scene)
   }
 
+  // The scene reads the scroll position of the list itself (a scroll listener on the native ScrollView): the offset reaches the
+  // scene on the same main-thread turn in which the list moves, with no JavaScript round trip.
+  private var attachedScrollView: android.widget.ScrollView? = null
+  private var attachedScrollViewTag: Int? = null
+
+  fun attachScrollView(tag: Int?) {
+    if (tag == attachedScrollViewTag) return
+    attachedScrollViewTag = tag
+    attachedScrollView?.setOnScrollChangeListener(null)
+    attachedScrollView = null
+    if (tag == null) return
+    mainHandler.post {
+      if (attachedScrollViewTag != tag) return@post
+      val reactContext = appContext.reactContext as? com.facebook.react.bridge.ReactContext
+      val resolved = reactContext?.let {
+        com.facebook.react.uimanager.UIManagerHelper.getUIManagerForReactTag(it, tag)?.resolveView(tag)
+      }
+      val scrollView = resolved as? android.widget.ScrollView ?: (resolved as? android.view.ViewGroup)?.let { findScrollView(it) }
+      if (scrollView == null) {
+        onScrollSourceChange(mapOf("source" to "bridge", "reason" to "scroll view $tag not found"))
+        return@post
+      }
+      val density = resources.displayMetrics.density.toDouble()
+      scrollView.setOnScrollChangeListener { _, _, scrollY, _, _ ->
+        val offset = scrollY / density
+        SceneHost.command { controller, now -> controller.setScrollOffset(offset, now) }
+      }
+      attachedScrollView = scrollView
+      SceneHost.command { controller, now -> controller.setScrollOffset(scrollView.scrollY / density, now) }
+      onScrollSourceChange(mapOf("source" to "native"))
+    }
+  }
+
+  private fun findScrollView(group: android.view.ViewGroup): android.widget.ScrollView? {
+    for (index in 0 until group.childCount) {
+      val child = group.getChildAt(index)
+      if (child is android.widget.ScrollView) return child
+      if (child is android.view.ViewGroup) findScrollView(child)?.let { return it }
+    }
+    return null
+  }
+
   // ----------------------------------------------------------------- Model
   private fun loadModel(scene: FilamentBoxScene) {
     try {
@@ -120,13 +163,16 @@ class MysterySceneView(context: Context, appContext: AppContext) : ExpoView(cont
 
   // ------------------------------------------------------------ Render loop
   override fun wakeRenderLoop() {
-    mainHandler.post {
-      idleFrames = 0
-      if (isLoopRunning) return@post
-      isLoopRunning = true
-      lastFrameTimeNanos = 0L
-      choreographer.postFrameCallback(frameCallback)
-    }
+    // A scroll callback is already on the main thread: wake up in the same turn instead of one hop later.
+    if (Looper.myLooper() == Looper.getMainLooper()) startRenderLoop() else mainHandler.post { startRenderLoop() }
+  }
+
+  private fun startRenderLoop() {
+    idleFrames = 0
+    if (isLoopRunning) return
+    isLoopRunning = true
+    lastFrameTimeNanos = 0L
+    choreographer.postFrameCallback(frameCallback)
   }
 
   private fun renderFrame(frameTimeNanos: Long) {

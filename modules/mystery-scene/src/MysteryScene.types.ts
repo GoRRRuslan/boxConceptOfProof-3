@@ -19,12 +19,20 @@ export interface IMysterySceneErrorEvent {
   nativeEvent: { message: string }
 }
 
+export interface IMysterySceneScrollSourceEvent {
+  nativeEvent: { source: 'native' | 'bridge'; reason?: string }
+}
+
 export interface IMysterySceneViewProps {
   style?: StyleProp<ViewStyle>
   // One entry per box in the list; the native scene creates that many instances of the model.
   cards: IMysterySceneCardLook[]
   // Native frame timing is reported once per second while the scene renders (measurement builds).
   isFrameStatsEnabled?: boolean
+  // React tag of the list's native scroll view. The scene then reads the scroll position itself on the native side, with no
+  // JavaScript round trip; `null` means the app feeds the offset through `MysteryScene.setScrollOffset`.
+  scrollViewTag?: number | null
+  onScrollSourceChange?: (event: IMysterySceneScrollSourceEvent) => void
   onModelLoaded?: () => void
   onFrameStats?: (event: IMysterySceneFrameStatsEvent) => void
   onSceneError?: (event: IMysterySceneErrorEvent) => void

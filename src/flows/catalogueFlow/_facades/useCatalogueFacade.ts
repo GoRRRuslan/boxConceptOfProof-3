@@ -10,7 +10,7 @@ import { useAdapterCatalogueCards } from '@flows/catalogueFlow/_adapters/useAdap
 import { useOpeningFacade } from '@flows/openingFlow/_facades/useOpeningFacade'
 import { EOpeningPhase } from '@flows/openingFlow/_types'
 import type { ICatalogueCard, ICatalogueFacade, ICatalogueViewport } from '@flows/catalogueFlow/_types'
-import { MysteryScene } from '@mysteryScene'
+import { type IMysterySceneScrollSourceEvent, MysteryScene } from '@mysteryScene'
 import useStore from '@models/mainStorage/_storeConfigured'
 import type { EBoxIdentifier } from '@networking/api/MysteryBoxApi/_types'
 import { ETabRoute, type TTabParamList } from '@navigation/_types'
@@ -21,6 +21,9 @@ import { useRenderFpsMeter } from '@services/performance/useRenderFpsMeter'
 const IS_PERFORMANCE_OVERLAY_VISIBLE = process.env.EXPO_PUBLIC_SHOW_PERFORMANCE === '1'
 // Measurement builds can scroll the list up and down by themselves: EXPO_PUBLIC_AUTO_SCROLL=1
 const IS_AUTO_SCROLL = process.env.EXPO_PUBLIC_AUTO_SCROLL === '1'
+// EXPO_PUBLIC_SCROLL_SOURCE=bridge feeds the scroll offset through JavaScript instead of letting the scene read the native
+// scroll view itself (used to measure the difference).
+const IS_NATIVE_SCROLL_ALLOWED = process.env.EXPO_PUBLIC_SCROLL_SOURCE !== 'bridge'
 const AUTO_SCROLL_SWEEP_MILLISECONDS = 2400
 const AUTO_SCROLL_TICK_MILLISECONDS = 16
 const PERFORMANCE_SCENARIO_LABEL = IS_AUTO_SCROLL ? 'catalogue-scroll' : 'catalogue'
@@ -37,6 +40,9 @@ export const useCatalogueFacade = (): ICatalogueFacade => {
   // --------------------------- State ------------------------- //
   const [viewport, setViewport] = useState<ICatalogueViewport | null>(null)
   const listRef = useRef<FlashListRef<ICatalogueCard> | null>(null)
+  // The scene reads the list's native scroll view itself once it is attached; until then (or if that fails) JavaScript feeds it.
+  const [scrollViewTag, setScrollViewTag] = useState<number | null>(null)
+  const [isNativeScroll, setIsNativeScroll] = useState<boolean>(false)
 
   // --------------------------- Store ------------------------- //
   const balanceInCents = useStore(state => state.balanceInCents)
@@ -66,7 +72,13 @@ export const useCatalogueFacade = (): ICatalogueFacade => {
   // The scroll offset goes straight into the native scene (one synchronous native call, no view update); the scene
   // draws by itself while it changes.
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    MysteryScene.setScrollOffset(event.nativeEvent.contentOffset.y)
+    if (!isNativeScroll) {
+      MysteryScene.setScrollOffset(event.nativeEvent.contentOffset.y)
+    }
+  }
+
+  const handleScrollSourceChange = (event: IMysterySceneScrollSourceEvent) => {
+    setIsNativeScroll(event.nativeEvent.source === 'native')
   }
 
   const handleRetryPress = () => {
@@ -83,6 +95,15 @@ export const useCatalogueFacade = (): ICatalogueFacade => {
   }
 
   // ------------------- Side effects ----------------------- //
+  // Once the list exists, tell the scene which native scroll view to read.
+  useEffect(() => {
+    if (IS_NATIVE_SCROLL_ALLOWED && viewport && cards.length > 0) {
+      const scrollableNode: unknown = listRef.current?.getScrollableNode()
+
+      setScrollViewTag(typeof scrollableNode === 'number' ? scrollableNode : null)
+    }
+  }, [viewport, cards.length])
+
   // While a prize is shown the tab bar is not needed: Done leads back to the list.
   const isTabBarHidden = opening.phase === EOpeningPhase.Revealed
 
@@ -123,9 +144,11 @@ export const useCatalogueFacade = (): ICatalogueFacade => {
     viewport,
     listRef,
     sceneCardLooks,
+    scrollViewTag,
     opening,
     isPerformanceOverlayVisible: IS_PERFORMANCE_OVERLAY_VISIBLE,
     handleFrameStats,
+    handleScrollSourceChange,
     renderFrameStats,
     isRenderPaused,
     handleListLayout,

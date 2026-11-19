@@ -32,9 +32,11 @@ const CatalogueScreen = () => {
     cards,
     listRef,
     sceneCardLooks,
+    scrollViewTag,
     opening,
     isPerformanceOverlayVisible,
     handleFrameStats,
+    handleScrollSourceChange,
     renderFrameStats,
     isRenderPaused,
     handleListLayout,
@@ -59,8 +61,10 @@ const CatalogueScreen = () => {
     <View style={styles.sceneLayer} pointerEvents="none">
       <CatalogueScene
         cardLooks={sceneCardLooks}
+        scrollViewTag={scrollViewTag}
         isFrameStatsEnabled={isPerformanceOverlayVisible}
         onFrameStats={handleFrameStats}
+        onScrollSourceChange={handleScrollSourceChange}
       />
     </View>
   )

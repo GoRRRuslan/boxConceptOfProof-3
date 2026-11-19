@@ -8,8 +8,6 @@ import { EBoxIdentifier } from '@networking/api/MysteryBoxApi/_types'
 
 jest.mock('@flows/catalogueFlow/_facades/useCatalogueFacade', () => ({ useCatalogueFacade: jest.fn() }))
 
-jest.mock('react-native-filament', () => ({ FilamentScene: ({ children }: { children: unknown }) => children }), { virtual: true })
-
 jest.mock('@flows/catalogueFlow/screens/CatalogueScreen/_components/CatalogueScene', () => {
   const { View } = jest.requireActual('react-native')
 
@@ -54,8 +52,8 @@ const baseFacade = {
     isListHidden: false,
     handleCardPress,
   },
-  phaseKey: EOpeningPhase.Browsing,
-  isRenderContinuous: false,
+  sceneCardLooks: [],
+  scrollViewTag: null,
   isPerformanceOverlayVisible: false,
   renderFrameStats: null,
   isRenderPaused: false,
@@ -64,7 +62,8 @@ const baseFacade = {
   handleRetryPress: jest.fn(),
   handleCardPressIn: jest.fn(),
   handleCardPressOut: jest.fn(),
-  sceneSync: {},
+  handleFrameStats: jest.fn(),
+  handleScrollSourceChange: jest.fn(),
 } as unknown as ICatalogueFacade
 
 const mockFacade = (overrides: Partial<ICatalogueFacade>) => {

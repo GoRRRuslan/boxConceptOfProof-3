@@ -36,12 +36,13 @@ public class MysterySceneModule: Module {
     Function("setTilt") { (x: Double, y: Double) in SceneHost.shared.command { $0.setTilt(x: x, y: y, now: $1) } }
 
     View(MysterySceneView.self) {
-      Events("onModelLoaded", "onFrameStats", "onSceneError")
+      Events("onModelLoaded", "onFrameStats", "onSceneError", "onScrollSourceChange")
 
       Prop("cards") { (view: MysterySceneView, cards: [CardLookRecord]) in
         view.setCards(
           cards.map { BoxLook(colorLinear: $0.color, roughness: $0.roughness, metallic: $0.metallic, clearCoat: $0.clearCoat) })
       }
+      Prop("scrollViewTag") { (view: MysterySceneView, tag: Int?) in view.attachScrollView(tag: tag) }
       Prop("isFrameStatsEnabled") { (view: MysterySceneView, isEnabled: Bool) in view.setFrameStatsEnabled(isEnabled) }
     }
   }

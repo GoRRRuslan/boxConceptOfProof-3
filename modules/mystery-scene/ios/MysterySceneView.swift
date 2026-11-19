@@ -8,6 +8,7 @@ final class MysterySceneView: ExpoView, SCNSceneRendererDelegate, SceneWaker {
   let onModelLoaded = EventDispatcher()
   let onFrameStats = EventDispatcher()
   let onSceneError = EventDispatcher()
+  let onScrollSourceChange = EventDispatcher()
 
   private let sceneView = SCNView()
   private let boxScene = BoxScene()
@@ -19,6 +20,8 @@ final class MysterySceneView: ExpoView, SCNSceneRendererDelegate, SceneWaker {
   private var pendingLooks: [BoxLook] = []
   private var isModelReady = false
   private var isReportingFrameStats = false
+  private var scrollObservation: NSKeyValueObservation?
+  private var attachedScrollViewTag: Int?
 
   required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
@@ -69,6 +72,34 @@ final class MysterySceneView: ExpoView, SCNSceneRendererDelegate, SceneWaker {
     wakeRenderLoop()
   }
 
+  // The scene reads the scroll position of the list itself (KVO on the UIScrollView's contentOffset): the offset reaches
+  // the scene on the same main-thread turn in which the list moves, with no JavaScript round trip.
+  func attachScrollView(tag: Int?) {
+    guard tag != attachedScrollViewTag else { return }
+    attachedScrollViewTag = tag
+    scrollObservation = nil
+    guard let tag else { return }
+    DispatchQueue.main.async { [weak self] in
+      guard let self, self.attachedScrollViewTag == tag else { return }
+      guard let root = self.appContext?.findView(withTag: tag, ofType: UIView.self), let scrollView = Self.findScrollView(in: root)
+      else {
+        self.onScrollSourceChange(["source": "bridge", "reason": "scroll view \(tag) not found"])
+        return
+      }
+      self.scrollObservation = scrollView.observe(\.contentOffset, options: [.initial, .new]) { scrollView, _ in
+        let offset = Double(scrollView.contentOffset.y)
+        SceneHost.shared.command { controller, now in controller.setScrollOffset(offset, now: now) }
+      }
+      self.onScrollSourceChange(["source": "native"])
+    }
+  }
+
+  private static func findScrollView(in view: UIView) -> UIScrollView? {
+    if let scrollView = view as? UIScrollView { return scrollView }
+    for subview in view.subviews { if let found = findScrollView(in: subview) { return found } }
+    return nil
+  }
+
   func setFrameStatsEnabled(_ isEnabled: Bool) { isReportingFrameStats = isEnabled }
 
   override func layoutSubviews() {
@@ -79,14 +110,17 @@ final class MysterySceneView: ExpoView, SCNSceneRendererDelegate, SceneWaker {
 
   // ------------------------------------------------------------ Render loop
   func wakeRenderLoop() {
-    DispatchQueue.main.async { [weak self] in
-      guard let self, !self.isLoopRunning else { self?.idleFrames = 0; return }
-      self.isLoopRunning = true
-      self.idleFrames = 0
-      self.lastUpdateTime = nil
-      self.sceneView.rendersContinuously = true
-      self.sceneView.isPlaying = true
-    }
+    // A scroll callback is already on the main thread: wake up in the same turn instead of one hop later.
+    if Thread.isMainThread { startRenderLoop() } else { DispatchQueue.main.async { [weak self] in self?.startRenderLoop() } }
+  }
+
+  private func startRenderLoop() {
+    idleFrames = 0
+    guard !isLoopRunning else { return }
+    isLoopRunning = true
+    lastUpdateTime = nil
+    sceneView.rendersContinuously = true
+    sceneView.isPlaying = true
   }
 
   private func sleepRenderLoop() {

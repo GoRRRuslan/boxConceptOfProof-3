@@ -3,7 +3,7 @@ import type { RefObject } from 'react'
 import type { LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent } from 'react-native'
 
 import type { IOpeningFacade } from '@flows/openingFlow/_types'
-import type { IMysterySceneCardLook, IMysterySceneFrameStatsEvent } from '@mysteryScene'
+import type { IMysterySceneCardLook, IMysterySceneFrameStatsEvent, IMysterySceneScrollSourceEvent } from '@mysteryScene'
 import type { EBoxIdentifier } from '@networking/api/MysteryBoxApi/_types'
 import type { IRenderFrameStats } from '@services/performance/summarizeFrameDeltas'
 
@@ -47,9 +47,12 @@ export interface ICatalogueFacade {
   listRef: RefObject<FlashListRef<ICatalogueCard> | null>
   // What the native scene needs per box (colour and finish).
   sceneCardLooks: IMysterySceneCardLook[]
+  // React tag of the list's native scroll view (the scene reads its scroll position itself), null until the list exists.
+  scrollViewTag: number | null
   opening: IOpeningFacade
   isPerformanceOverlayVisible: boolean
   handleFrameStats: (event: IMysterySceneFrameStatsEvent) => void
+  handleScrollSourceChange: (event: IMysterySceneScrollSourceEvent) => void
   renderFrameStats: IRenderFrameStats | null
   isRenderPaused: boolean
   handleListLayout: (event: LayoutChangeEvent) => void
