@@ -43,3 +43,9 @@ yarn-error.*
 # fetched native binaries cache
 .cache/
 docs/media/*.mp4
+
+# SwiftPM / Gradle build output
+.build/
+.swiftpm/
+build/
+.gradle/

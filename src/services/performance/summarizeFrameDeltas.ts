@@ -10,10 +10,8 @@ export interface IRenderFrameStats {
 // Frames slower than this are counted as dropped on a 60 Hz display (1.5 vsync intervals).
 export const SLOW_FRAME_THRESHOLD_MILLISECONDS = 25
 
-// Pure summary of per-frame durations. Runs on the Filament worklet runtime, hence the directive.
+// Pure summary of per-frame durations.
 export const summarizeFrameDeltas = (frameDeltasMilliseconds: number[]): IRenderFrameStats => {
-  'worklet'
-
   const frames = frameDeltasMilliseconds.length
 
   if (frames === 0) {

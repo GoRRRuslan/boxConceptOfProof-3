@@ -1,7 +1,6 @@
 import { FlashList } from '@shopify/flash-list'
 import { useMemo } from 'react'
 import { View } from 'react-native'
-import { FilamentScene } from 'react-native-filament'
 
 import { AppText } from '@components/AppText'
 import { FadingView } from '@components/FadingView'
@@ -10,7 +9,6 @@ import { PerformanceOverlay } from '@components/PerformanceOverlay'
 import { EPerformanceOverlayPlacement } from '@components/PerformanceOverlay/_types'
 import { AppButton } from '@components/buttons/AppButton'
 import { ScreenContainer } from '@components/_layout/ScreenContainer'
-import { CATALOGUE_SCENE_RENDER_PROPS } from '@flows/catalogueFlow/_config/sceneRenderConfig'
 import { useCatalogueFacade } from '@flows/catalogueFlow/_facades/useCatalogueFacade'
 import type { ICatalogueCard } from '@flows/catalogueFlow/_types'
 import { BoxCard } from '@flows/catalogueFlow/screens/CatalogueScreen/_components/BoxCard'
@@ -32,14 +30,11 @@ const CatalogueScreen = () => {
     isLoadingBoxes,
     isErrorBoxes,
     cards,
-    viewport,
     listRef,
-    sceneSync,
+    sceneCardLooks,
     opening,
-    phaseKey,
-    isRenderContinuous,
     isPerformanceOverlayVisible,
-    renderCallback,
+    handleFrameStats,
     renderFrameStats,
     isRenderPaused,
     handleListLayout,
@@ -62,16 +57,11 @@ const CatalogueScreen = () => {
 
   const renderScene = () => (
     <View style={styles.sceneLayer} pointerEvents="none">
-      <FilamentScene {...CATALOGUE_SCENE_RENDER_PROPS}>
-        <CatalogueScene
-          cards={cards}
-          viewport={viewport}
-          sceneSync={sceneSync}
-          phaseKey={phaseKey}
-          isRenderContinuous={isRenderContinuous}
-          renderCallback={renderCallback}
-        />
-      </FilamentScene>
+      <CatalogueScene
+        cardLooks={sceneCardLooks}
+        isFrameStatsEnabled={isPerformanceOverlayVisible}
+        onFrameStats={handleFrameStats}
+      />
     </View>
   )
 

@@ -20,6 +20,7 @@ module.exports = function (api) {
             '@networking': './src/networking',
             '@services': './src/services',
             '@utils': './src/utils',
+            '@mysteryScene': './modules/mystery-scene/src',
           },
           extensions: ['.ts', '.tsx', '.js', '.json'],
         },

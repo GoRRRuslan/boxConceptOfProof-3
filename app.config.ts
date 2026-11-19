@@ -18,7 +18,8 @@ const config: ExpoConfig = {
     bundleIdentifier: 'com.gorrr.mysterywatch.native',
   },
   android: {
-    package: 'com.gorrr.mysterywatch.native',
+    // The application id is com.gorrr.mysterywatch.native (see the plugin below); `native` is a Java keyword, so the code package differs.
+    package: 'com.gorrr.mysterywatch.nativeapp',
     predictiveBackGestureEnabled: false,
     adaptiveIcon: {
       backgroundColor: '#0B0D12',
@@ -34,6 +35,7 @@ const config: ExpoConfig = {
     'expo-localization',
     'expo-status-bar',
     'expo-dev-client',
+    ['./plugins/withAndroidApplicationId', { applicationId: 'com.gorrr.mysterywatch.native' }],
     ['expo-build-properties', { android: { buildArchs: androidArchitectures } }],
     [
       'expo-splash-screen',

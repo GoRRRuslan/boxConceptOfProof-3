@@ -1,0 +1,184 @@
+package expo.modules.mysteryscene
+
+import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import android.view.Choreographer
+import android.view.Surface
+import android.view.TextureView
+import android.view.View.MeasureSpec
+import com.google.android.filament.Filament
+import com.google.android.filament.SwapChain
+import com.google.android.filament.android.DisplayHelper
+import com.google.android.filament.android.UiHelper
+import com.google.android.filament.gltfio.Gltfio
+import com.google.android.filament.utils.Utils
+import expo.modules.kotlin.AppContext
+import expo.modules.kotlin.viewevent.EventDispatcher
+import expo.modules.kotlin.views.ExpoView
+
+/**
+ * The native 3D view. It sits behind the (transparent) cards of the list, owns the render loop and renders only while the
+ * scene controller says something moves.
+ */
+class MysterySceneView(context: Context, appContext: AppContext) : ExpoView(context, appContext), SceneWaker {
+  private val onModelLoaded by EventDispatcher<Map<String, Any>>()
+  private val onFrameStats by EventDispatcher<Map<String, Any>>()
+  private val onSceneError by EventDispatcher<Map<String, Any>>()
+
+  var isFrameStatsEnabled = false
+
+  private val mainHandler = Handler(Looper.getMainLooper())
+  private val textureView = TextureView(context)
+  private val choreographer = Choreographer.getInstance()
+  private val uiHelper = UiHelper(UiHelper.ContextErrorPolicy.DONT_CHECK)
+  private val displayHelper = DisplayHelper(context)
+  private var boxScene: FilamentBoxScene? = null
+  private var swapChain: SwapChain? = null
+  private var pendingLooks: List<BoxLook> = emptyList()
+  private var isModelReady = false
+
+  private var isLoopRunning = false
+  private var idleFrames = 0
+  private var lastFrameTimeNanos = 0L
+  private var windowStartMilliseconds = 0.0
+  private val windowDeltas = ArrayList<Double>()
+
+  private val frameCallback = object : Choreographer.FrameCallback {
+    override fun doFrame(frameTimeNanos: Long) {
+      if (!isLoopRunning) return
+      renderFrame(frameTimeNanos)
+      if (isLoopRunning) choreographer.postFrameCallback(this)
+    }
+  }
+
+  init {
+    Filament.init()
+    Gltfio.init()
+    Utils.init()
+    setBackgroundColor(0xFF0B0D12.toInt())
+    addView(textureView)
+    SceneHost.waker = this
+
+    val scene = FilamentBoxScene(context)
+    boxScene = scene
+    uiHelper.renderCallback = object : UiHelper.RendererCallback {
+      override fun onNativeWindowChanged(surface: Surface) {
+        swapChain?.let { scene.engine.destroySwapChain(it) }
+        swapChain = scene.engine.createSwapChain(surface, uiHelper.swapChainFlags)
+        displayHelper.attach(scene.renderer, textureView.display)
+        wakeRenderLoop()
+      }
+
+      override fun onDetachedFromSurface() {
+        displayHelper.detach()
+        swapChain?.let {
+          scene.engine.destroySwapChain(it)
+          scene.engine.flushAndWait()
+        }
+        swapChain = null
+      }
+
+      override fun onResized(width: Int, height: Int) {
+        scene.setViewportSize(width, height)
+        wakeRenderLoop()
+      }
+    }
+    uiHelper.isOpaque = true
+    uiHelper.attachTo(textureView)
+    loadModel(scene)
+  }
+
+  // ----------------------------------------------------------------- Model
+  private fun loadModel(scene: FilamentBoxScene) {
+    try {
+      scene.loadModel()
+      isModelReady = true
+      scene.setCards(pendingLooks)
+      SceneHost.command { controller, now -> controller.markModelReady(now) }
+      onModelLoaded(emptyMap())
+    } catch (error: Exception) {
+      onSceneError(mapOf("message" to (error.message ?: error.toString())))
+    }
+  }
+
+  fun setCards(looks: List<BoxLook>) {
+    pendingLooks = looks
+    SceneHost.command { controller, now -> controller.setCardCount(looks.size, now) }
+    if (isModelReady) boxScene?.setCards(looks)
+    wakeRenderLoop()
+  }
+
+  override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+    val width = right - left
+    val height = bottom - top
+    textureView.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY))
+    textureView.layout(0, 0, width, height)
+    val density = resources.displayMetrics.density.toDouble()
+    SceneHost.setViewport(width / density, height / density)
+  }
+
+  // ------------------------------------------------------------ Render loop
+  override fun wakeRenderLoop() {
+    mainHandler.post {
+      idleFrames = 0
+      if (isLoopRunning) return@post
+      isLoopRunning = true
+      lastFrameTimeNanos = 0L
+      choreographer.postFrameCallback(frameCallback)
+    }
+  }
+
+  private fun renderFrame(frameTimeNanos: Long) {
+    val scene = boxScene ?: return
+    val chain = swapChain
+    val nowMilliseconds = SceneHost.nowMilliseconds()
+    val deltaSeconds = if (lastFrameTimeNanos == 0L) 1.0 / 60 else (frameTimeNanos - lastFrameTimeNanos) / 1e9
+    val hadPreviousFrame = lastFrameTimeNanos != 0L
+    val deltaMilliseconds = deltaSeconds * 1000
+    lastFrameTimeNanos = frameTimeNanos
+
+    val result = SceneHost.computeFrame(nowMilliseconds, deltaSeconds) ?: return
+    scene.apply(result.frame)
+
+    if (chain != null && uiHelper.isReadyToRender && scene.renderer.beginFrame(chain, frameTimeNanos)) {
+      scene.renderer.render(scene.view)
+      scene.renderer.endFrame()
+    }
+
+    if (hadPreviousFrame) record(deltaMilliseconds, nowMilliseconds)
+
+    if (result.needsMoreFrames) {
+      idleFrames = 0
+    } else {
+      idleFrames += 1
+      if (idleFrames >= 3) isLoopRunning = false
+    }
+  }
+
+  private fun record(deltaMilliseconds: Double, now: Double) {
+    if (!isFrameStatsEnabled) return
+    if (windowStartMilliseconds == 0.0) windowStartMilliseconds = now
+    // A gap this long is the loop waking up from a rest, not a frame time.
+    if (deltaMilliseconds > 1000) {
+      windowStartMilliseconds = now
+      windowDeltas.clear()
+      return
+    }
+    windowDeltas.add(deltaMilliseconds)
+    if (now - windowStartMilliseconds < 1000) return
+    onFrameStats(mapOf("deltasMilliseconds" to ArrayList(windowDeltas)))
+    windowDeltas.clear()
+    windowStartMilliseconds = now
+  }
+
+  override fun onDetachedFromWindow() {
+    super.onDetachedFromWindow()
+    isLoopRunning = false
+  }
+
+  override fun onAttachedToWindow() {
+    super.onAttachedToWindow()
+    wakeRenderLoop()
+  }
+}

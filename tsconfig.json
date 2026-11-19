@@ -16,10 +16,11 @@
       "@navigation/*": ["./src/navigation/*"],
       "@networking/*": ["./src/networking/*"],
       "@services/*": ["./src/services/*"],
-      "@utils/*": ["./src/utils/*"]
+      "@utils/*": ["./src/utils/*"],
+      "@mysteryScene": ["./modules/mystery-scene/src"]
     },
     "exactOptionalPropertyTypes": true,
     "types": ["jest", "node"]
   },
-  "include": ["index.ts", "app.config.ts", "src/**/*", "__tests__", "declarations.d.ts", "jest.setup.ts"]
+  "include": ["index.ts", "modules/mystery-scene/src", "app.config.ts", "src/**/*", "__tests__", "declarations.d.ts", "jest.setup.ts"]
 }

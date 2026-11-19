@@ -1,0 +1,36 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.mysteryscene'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.mysteryscene"
+  defaultConfig {
+    versionCode 1
+    versionName '0.1.0'
+  }
+  sourceSets {
+    // box.glb and the environment map are shared with the iOS module: one copy in ../assets.
+    main { assets.srcDirs += ['../assets'] }
+  }
+  testOptions {
+    unitTests.returnDefaultValues = true
+  }
+  packagingOptions {
+    // Filament ships its native libraries once per ABI; keep them uncompressed-friendly and unique.
+    jniLibs { pickFirsts += ['**/libc++_shared.so'] }
+  }
+}
+
+dependencies {
+  // Google Filament: the rendering engine, the glTF loader (gltfio) and the KTX image loader for the environment map.
+  implementation 'com.google.android.filament:filament-android:1.69.5'
+  implementation 'com.google.android.filament:gltfio-android:1.69.5'
+  implementation 'com.google.android.filament:filament-utils-android:1.69.5'
+
+  testImplementation 'junit:junit:4.13.2'
+  testImplementation 'org.json:json:20240303'
+}

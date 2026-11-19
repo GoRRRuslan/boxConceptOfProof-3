@@ -1,6 +1,5 @@
 import type { ImageSourcePropType } from 'react-native'
 import type { useSimultaneousGestures } from 'react-native-gesture-handler'
-import type { Synchronizable } from 'react-native-worklets'
 
 import type { EBoxIdentifier } from '@networking/api/MysteryBoxApi/_types'
 
@@ -32,7 +31,8 @@ export enum EOpeningEvent {
   ClosePressed = 'closePressed',
 }
 
-// What the 3D scene needs to know about the opening, written by React, read on every frame.
+// Opening state of the 3D scene as timestamps and targets. The native scene owns this state; this type is kept for the
+// TypeScript reference implementation (src/services/sceneReference) that generates the parity test vectors.
 export interface IOpeningSceneState {
   // Index of the card whose box is opened/centred; -1 when none.
   focusedCardIndex: number
@@ -107,7 +107,6 @@ export interface IOpeningFacade {
   phase: EOpeningPhase
   isOverlayVisible: boolean
   isListHidden: boolean
-  isDragging: boolean
   // After the reveal the opened box is put away; from then on nothing moves in the scene and it may rest.
   isBoxPutAway: boolean
   boxNameText: string
@@ -120,10 +119,6 @@ export interface IOpeningFacade {
   reveal: IOpeningReveal | null
   // Pan (turn) + pinch (zoom) + double tap (reset), all at once.
   gesture: ReturnType<typeof useSimultaneousGestures>
-  // Device tilt, written while a box is open.
-  tilt: Synchronizable<[number, number]>
-  sceneState: Synchronizable<IOpeningSceneState>
-  dragState: Synchronizable<IDragState>
   handleCardPress: (boxIdentifier: EBoxIdentifier) => void
   handleBackPress: () => void
 }

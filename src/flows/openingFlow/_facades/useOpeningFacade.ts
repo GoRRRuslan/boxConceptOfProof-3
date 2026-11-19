@@ -2,13 +2,10 @@ import type { TFunction } from 'i18next'
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { usePanGesture, usePinchGesture, useSimultaneousGestures, useTapGesture } from 'react-native-gesture-handler'
-import { createSynchronizable } from 'react-native-worklets'
 
 import type { ICatalogueCard } from '@flows/catalogueFlow/_types'
 import {
   ANTICIPATION_DURATION_MILLISECONDS,
-  DRAG_INERTIA_MAXIMUM_MILLISECONDS,
-  DRAG_RADIANS_PER_PIXEL,
   FOCUS_DURATION_MILLISECONDS,
   LID_OPEN_DURATION_MILLISECONDS,
   OPEN_SWIPE_DISTANCE,
@@ -19,33 +16,17 @@ import { RARITY_STYLES } from '@flows/openingFlow/_config/rarityConfig'
 import { useFacadeDeviceTilt } from '@flows/openingFlow/_facades/useFacadeDeviceTilt'
 import { getPrimaryActionForPhase } from '@flows/openingFlow/_facadesLogic/getPrimaryActionForPhase'
 import { getWatchRarity } from '@flows/openingFlow/_facadesLogic/getWatchRarity'
-import {
-  INITIAL_OPENING_SCENE_STATE,
-  setGlowColor,
-  startClose,
-  startFocus,
-  startLidOpen,
-  startTuck,
-} from '@flows/openingFlow/_facadesLogic/openingSceneState'
 import { transitionOpeningPhase } from '@flows/openingFlow/_facadesLogic/openingPhaseMachine'
-import {
-  INITIAL_DRAG_STATE,
-  applyDragMovement,
-  applyZoom,
-  releaseDrag,
-  requestReset,
-} from '@flows/openingFlow/_facadesLogic/stepDragInertia'
 import {
   EOpeningEvent,
   EOpeningPhase,
   EOpeningPrimaryAction,
   EWatchRarity,
-  type IDragState,
   type IOpeningFacade,
   type IOpeningPrimaryButton,
   type IOpeningReveal,
-  type IOpeningSceneState,
 } from '@flows/openingFlow/_types'
+import { MysteryScene } from '@mysteryScene'
 import useStore from '@models/mainStorage/_storeConfigured'
 import type { EBoxIdentifier, EPurchaseErrorCode, IGetBoxesResponse, IWatch } from '@networking/api/MysteryBoxApi/_types'
 import { EBoxPurchaseResultStatus } from '@networking/requests/mutations/PurchaseMutations/_logic/runBoxPurchase'
@@ -78,14 +59,8 @@ export const useOpeningFacade = ({ boxesData, cards }: IUseOpeningFacadeParams):
   const [selectedBoxIdentifier, setSelectedBoxIdentifier] = useState<EBoxIdentifier | null>(null)
   const [revealedWatch, setRevealedWatch] = useState<IWatch | null>(null)
   const [errorCode, setErrorCode] = useState<EPurchaseErrorCode | null>(null)
-  const [isDragging, setIsDragging] = useState<boolean>(false)
-  // After the finger lifts the box keeps turning (inertia): the renderer must keep drawing meanwhile.
-  const [isInertiaRunning, setIsInertiaRunning] = useState<boolean>(false)
   // The opened box has been put away after the reveal: nothing moves in the 3D scene any more.
   const [isBoxPutAway, setIsBoxPutAway] = useState<boolean>(false)
-  const inertiaTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  // The finger really started a drag (not just a tap): only then the box has inertia to play out.
-  const hasDragActivated = useRef<boolean>(false)
   const openingTimers = useRef<ReturnType<typeof setTimeout>[]>([])
   // After leaving, the box needs a moment to fly back before another one may be selected.
   const selectionLockedUntilMilliseconds = useRef<number>(0)
@@ -97,10 +72,6 @@ export const useOpeningFacade = ({ boxesData, cards }: IUseOpeningFacadeParams):
   const { mutatePurchaseBoxAsync } = usePostPurchaseBoxMutation()
 
   // -------------------------- Values ------------------------- //
-  // Shared with the 3D scene, which reads them on every frame.
-  const sceneState = useMemo(() => createSynchronizable<IOpeningSceneState>(INITIAL_OPENING_SCENE_STATE), [])
-  const dragState = useMemo(() => createSynchronizable<IDragState>(INITIAL_DRAG_STATE), [])
-  const tilt = useMemo(() => createSynchronizable<[number, number]>([0, 0]), [])
   const selectedBox = useMemo(
     () => boxesData?.boxes.find(box => box.identifier === selectedBoxIdentifier),
     [boxesData, selectedBoxIdentifier],
@@ -135,9 +106,7 @@ export const useOpeningFacade = ({ boxesData, cards }: IUseOpeningFacadeParams):
 
     setErrorCode(null)
 
-    dragState.setBlocking({ ...INITIAL_DRAG_STATE, lastInteractionAtMilliseconds: Date.now() })
-
-    sceneState.setBlocking(startFocus(sceneState.getBlocking(), cardIndex, Date.now()))
+    MysteryScene.focus(cardIndex)
 
     dispatchEvent(EOpeningEvent.BoxSelected)
 
@@ -163,7 +132,9 @@ export const useOpeningFacade = ({ boxesData, cards }: IUseOpeningFacadeParams):
       setRevealedWatch(watch)
 
       // The light inside the box will glow in the colour of the prize.
-      sceneState.setBlocking(setGlowColor(sceneState.getBlocking(), RARITY_STYLES[getWatchRarity(watch.valueInCents)].glowColorLinear))
+      const [red, green, blue] = RARITY_STYLES[getWatchRarity(watch.valueInCents)].glowColorLinear
+
+      MysteryScene.setGlowColor(red, green, blue)
 
       dispatchEvent(EOpeningEvent.PurchaseSucceeded)
 
@@ -187,10 +158,8 @@ export const useOpeningFacade = ({ boxesData, cards }: IUseOpeningFacadeParams):
       return
     }
 
-    sceneState.setBlocking(startLidOpen(sceneState.getBlocking(), Date.now()))
-
-    // Whatever angle the box was turned to, it glides back to the base pose so the opened box always reads the same.
-    dragState.setBlocking(requestReset(dragState.getBlocking(), Date.now()))
+    // The native scene lets the box glide back to its base pose first, so an opened box always reads the same.
+    MysteryScene.openLid()
 
     dispatchEvent(EOpeningEvent.OpenPressed)
 
@@ -216,7 +185,7 @@ export const useOpeningFacade = ({ boxesData, cards }: IUseOpeningFacadeParams):
         }
       }, ANTICIPATION_DURATION_MILLISECONDS + LID_OPEN_DURATION_MILLISECONDS),
       setTimeout(() => {
-        sceneState.setBlocking(startTuck(sceneState.getBlocking(), Date.now()))
+        MysteryScene.tuck()
       }, ANTICIPATION_DURATION_MILLISECONDS + LID_OPEN_DURATION_MILLISECONDS + TUCK_DELAY_MILLISECONDS),
       setTimeout(() => {
         setIsBoxPutAway(true)
@@ -233,7 +202,7 @@ export const useOpeningFacade = ({ boxesData, cards }: IUseOpeningFacadeParams):
 
     clearOpeningTimers()
 
-    sceneState.setBlocking(startClose(sceneState.getBlocking(), Date.now()))
+    MysteryScene.closeBox()
 
     setErrorCode(null)
 
@@ -253,61 +222,20 @@ export const useOpeningFacade = ({ boxesData, cards }: IUseOpeningFacadeParams):
   // ------------------- Gestures ------------------------- //
   const isGestureEnabled = INTERACTIVE_PHASES.includes(phase)
 
-  // Turn with one finger; the box keeps turning after release (inertia, see the scene). On a bought box
+  // Turn with one finger; the native scene keeps the box turning after release (inertia). On a bought box
   // a swipe up opens it instead of tilting it.
   const panGesture = usePanGesture({
     runOnJS: true,
     enabled: isGestureEnabled,
-    onActivate: () => {
-      hasDragActivated.current = true
-
-      clearTimeout(inertiaTimer.current)
-
-      setIsInertiaRunning(false)
-
-      setIsDragging(true)
-    },
     onUpdate: event => {
-      dragState.setBlocking(
-        applyDragMovement(
-          dragState.getBlocking(),
-          event.changeX,
-          phase === EOpeningPhase.Ready ? 0 : event.changeY,
-          DRAG_RADIANS_PER_PIXEL,
-          Date.now(),
-        ),
-      )
+      MysteryScene.dragBy(event.changeX, phase === EOpeningPhase.Ready ? 0 : event.changeY)
     },
     onDeactivate: event => {
-      dragState.setBlocking(
-        releaseDrag(
-          dragState.getBlocking(),
-          event.velocityX * DRAG_RADIANS_PER_PIXEL,
-          phase === EOpeningPhase.Ready ? 0 : event.velocityY * DRAG_RADIANS_PER_PIXEL,
-          Date.now(),
-        ),
-      )
+      MysteryScene.dragEnd(event.velocityX, phase === EOpeningPhase.Ready ? 0 : event.velocityY)
 
       if (phase === EOpeningPhase.Ready && event.translationY < -OPEN_SWIPE_DISTANCE) {
         handleOpenPress()
       }
-    },
-    onFinalize: () => {
-      if (!hasDragActivated.current) {
-        return
-      }
-
-      hasDragActivated.current = false
-
-      dragState.setBlocking({ ...dragState.getBlocking(), isDragging: false })
-
-      setIsDragging(false)
-
-      setIsInertiaRunning(true)
-
-      inertiaTimer.current = setTimeout(() => {
-        setIsInertiaRunning(false)
-      }, DRAG_INERTIA_MAXIMUM_MILLISECONDS)
     },
   })
 
@@ -316,7 +244,7 @@ export const useOpeningFacade = ({ boxesData, cards }: IUseOpeningFacadeParams):
     runOnJS: true,
     enabled: isGestureEnabled,
     onUpdate: event => {
-      dragState.setBlocking(applyZoom(dragState.getBlocking(), event.scaleChange, Date.now()))
+      MysteryScene.pinch(event.scaleChange)
     },
   })
 
@@ -326,28 +254,18 @@ export const useOpeningFacade = ({ boxesData, cards }: IUseOpeningFacadeParams):
     enabled: isGestureEnabled,
     numberOfTaps: 2,
     onActivate: () => {
-      dragState.setBlocking(requestReset(dragState.getBlocking(), Date.now()))
-
-      setIsInertiaRunning(true)
-
-      clearTimeout(inertiaTimer.current)
-
-      inertiaTimer.current = setTimeout(() => {
-        setIsInertiaRunning(false)
-      }, DRAG_INERTIA_MAXIMUM_MILLISECONDS)
+      MysteryScene.resetView()
     },
   })
 
   const gesture = useSimultaneousGestures(panGesture, pinchGesture, doubleTapGesture)
 
   // ------------------- Side effects ----------------------- //
-  useFacadeDeviceTilt({ isActive: phase !== EOpeningPhase.Browsing, tilt })
+  useFacadeDeviceTilt({ isActive: phase !== EOpeningPhase.Browsing })
 
   useEffect(
     () => () => {
       openingTimers.current.forEach(clearTimeout)
-
-      clearTimeout(inertiaTimer.current)
     },
     [],
   )
@@ -371,7 +289,6 @@ export const useOpeningFacade = ({ boxesData, cards }: IUseOpeningFacadeParams):
     phase,
     isOverlayVisible: phase !== EOpeningPhase.Browsing,
     isListHidden: phase !== EOpeningPhase.Browsing,
-    isDragging: isDragging || isInertiaRunning || phase === EOpeningPhase.Opening,
     isBoxPutAway,
     boxNameText: selectedBox?.name ?? '',
     priceText: selectedBox ? formatCurrency(selectedBox.priceInCents) : '',
@@ -382,9 +299,6 @@ export const useOpeningFacade = ({ boxesData, cards }: IUseOpeningFacadeParams):
     primaryButton,
     reveal,
     gesture,
-    tilt,
-    sceneState,
-    dragState,
     handleCardPress,
     handleBackPress,
   }
