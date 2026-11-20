@@ -36,7 +36,7 @@ final class BoxScene {
     configureCamera()
     configureLights()
     scene.lightingEnvironment.contents = EnvironmentImage.make()
-    scene.lightingEnvironment.intensity = 1.1
+    scene.lightingEnvironment.intensity = 0.8
   }
 
   // ------------------------------------------------------------------ Setup
@@ -66,9 +66,9 @@ final class BoxScene {
   private func configureLights() {
     struct LightSpec { let intensity: CGFloat; let kelvin: CGFloat; let direction: SIMD3<Float>; let castsShadow: Bool }
     let specs = [
-      LightSpec(intensity: 1700, kelvin: 5600, direction: [0.45, -0.75, -0.55], castsShadow: true),
-      LightSpec(intensity: 900, kelvin: 9000, direction: [-0.65, -0.25, 0.7], castsShadow: false),
-      LightSpec(intensity: 350, kelvin: 6500, direction: [-0.2, 0.9, -0.4], castsShadow: false),
+      LightSpec(intensity: 1000, kelvin: 5600, direction: [0.45, -0.75, -0.55], castsShadow: true),
+      LightSpec(intensity: 550, kelvin: 9000, direction: [-0.65, -0.25, 0.7], castsShadow: false),
+      LightSpec(intensity: 250, kelvin: 6500, direction: [-0.2, 0.9, -0.4], castsShadow: false),
     ]
     for spec in specs {
       let light = SCNLight()
