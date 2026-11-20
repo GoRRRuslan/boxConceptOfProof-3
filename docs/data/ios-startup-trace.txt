@@ -1,0 +1,7 @@
+getpwuid_r did not find a match for uid 501
+Filtering the log data using "composedMessage CONTAINS "[MysteryScene]""
+Timestamp                       Thread     Type        Activity             PID    TTL  
+2026-11-20 01:29:09.790969+0100 0x30bda5   Default     0x0                  7649   0    MysteryWatchNative: (Foundation) [MysteryScene] startup viewCreated at -0 ms since the view was created
+2026-11-20 01:29:09.807965+0100 0x30bda5   Default     0x0                  7649   0    MysteryWatchNative: (Foundation) [MysteryScene] startup modelLoaded at 17 ms since the view was created
+2026-11-20 01:29:10.487994+0100 0x30bda5   Default     0x0                  7649   0    MysteryWatchNative: (Foundation) [MysteryScene] startup cardsReceived at 697 ms since the view was created
+2026-11-20 01:29:10.491903+0100 0x30be58   Default     0x0                  7649   0    MysteryWatchNative: (Foundation) [MysteryScene] startup firstFrameWithBoxes at 701 ms since the view was created

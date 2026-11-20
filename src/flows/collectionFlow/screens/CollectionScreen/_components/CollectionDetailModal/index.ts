@@ -1,0 +1,1 @@
+export { CollectionDetailModal } from './CollectionDetailModal'

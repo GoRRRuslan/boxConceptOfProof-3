@@ -1,0 +1,5 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": { "modules": ["MysterySceneModule"] },
+  "android": { "modules": ["expo.modules.mysteryscene.MysterySceneModule"] }
+}

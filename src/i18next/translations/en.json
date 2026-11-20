@@ -1,0 +1,72 @@
+{
+  "app": {
+    "title": "Mystery Watch",
+    "stageZeroSubtitle": "Stage 0 scaffold is running"
+  },
+  "spike": {
+    "angleLabel": "{{angle}}°",
+    "open": "Open",
+    "close": "Close",
+    "decrease": "−5°",
+    "increase": "+5°",
+    "modelCount": "Boxes: {{count}}",
+    "quality": "Quality: {{profile}}",
+    "benchmarkOn": "Benchmark: ON",
+    "benchmarkOff": "Benchmark: off"
+  },
+  "performance": {
+    "measuring": "Measuring…",
+    "summary": "{{fps}} fps · avg {{average}} ms · p95 {{p95}} ms · slow {{slow}}",
+    "paused": "Render paused · idle (0 fps)"
+  },
+  "catalogue": {
+    "title": "Mystery Boxes",
+    "balanceLabel": "Balance",
+    "prizeUpTo": "Win a watch worth up to {{amount}}",
+    "notEnoughBalance": "Not enough balance",
+    "loading": "Loading boxes…",
+    "error": "Could not load the boxes.",
+    "retry": "Try again"
+  },
+  "opening": {
+    "buy": "Buy for {{price}}",
+    "buying": "Purchasing…",
+    "open": "Open the box",
+    "opening": "Opening…",
+    "done": "Done",
+    "back": "Back",
+    "hintInspect": "Drag to turn · pinch to zoom · double tap to reset",
+    "hintReady": "Tap the button or swipe up to open",
+    "hintOpening": "Here it comes…",
+    "revealTitle": "You got",
+    "watchValue": "Worth {{amount}}",
+    "errors": {
+      "insufficientBalance": "Your balance is too low for this box.",
+      "networkError": "Network problem. Nothing was charged — try again.",
+      "serverError": "Something went wrong. Nothing was charged — try again.",
+      "boxNotFound": "This box is no longer available."
+    },
+    "rarity": {
+      "common": "Common",
+      "rare": "Rare",
+      "epic": "Epic",
+      "legendary": "Legendary!"
+    }
+  },
+  "collection": {
+    "title": "My Collection",
+    "totalValue": "Total value",
+    "count_one": "{{count}} watch",
+    "count_other": "{{count}} watches",
+    "fromBox": "From {{box}}",
+    "emptyTitle": "No watches yet",
+    "emptyDescription": "Buy a mystery box and the watch you win will appear here.",
+    "browse": "Browse boxes",
+    "detailClose": "Close",
+    "detailBox": "Won in {{box}}"
+  },
+  "tabs": {
+    "catalogue": "Boxes",
+    "collection": "Collection"
+  }
+}
