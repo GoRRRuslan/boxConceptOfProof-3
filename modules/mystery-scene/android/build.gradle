@@ -26,6 +26,9 @@ android {
 }
 
 dependencies {
+  // React Native itself (view lookup by tag for the native scroll source).
+  compileOnly 'com.facebook.react:react-android'
+
   // Google Filament: the rendering engine, the glTF loader (gltfio) and the KTX image loader for the environment map.
   implementation 'com.google.android.filament:filament-android:1.69.5'
   implementation 'com.google.android.filament:gltfio-android:1.69.5'
