@@ -215,10 +215,10 @@ final class BoxScene {
     if let previous = appliedGlowStrength[cardIndex], abs(previous - strength) <= 0.002 { return }
     appliedGlowStrength[cardIndex] = strength
     let emission = GlbLoader.linearColor(color[0] * strength, color[1] * strength, color[2] * strength)
-    // SceneKit's emission is dimmer than Filament's emissive factor: the intensity brings the glow (and its bloom) to the same strength.
+    // SceneKit's emission is dimmer than Filament's emissive factor: a moderate intensity brings the glow to a strength like the first version (4 blew the colour out to white).
     glowMaterials[cardIndex].forEach {
       $0.emission.contents = emission
-      $0.emission.intensity = 4
+      $0.emission.intensity = 1.6
     }
   }
 }
