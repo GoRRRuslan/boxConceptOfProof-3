@@ -1,12 +1,10 @@
-run 1 91611 762053
-startup cardsReceived at 1475 ms since process start
-startup firstFrameWithBoxes at 1504 ms since process start
-startup fullQuality at 4012 ms since process start
-run 2 91611 760141
-startup cardsReceived at 1374 ms since process start
-startup firstFrameWithBoxes at 1398 ms since process start
-startup fullQuality at 3897 ms since process start
-run 3 91611 759232
-startup cardsReceived at 1407 ms since process start
-startup firstFrameWithBoxes at 1432 ms since process start
-startup fullQuality at 3959 ms since process start
+2:763393 3:762340 4:763086 6:763484 
+2:762994 3:763632 4:762377 6:763590 
+startup cardsReceived at 1418 ms since process start
+startup firstFrameWithBoxes at 1454 ms since process start
+2:761142 3:761193 4:762468 6:762768 
+startup cardsReceived at 1343 ms since process start
+startup firstFrameWithBoxes at 1381 ms since process start
+2:761972 3:761316 4:761275 6:762449 
+startup cardsReceived at 1396 ms since process start
+startup firstFrameWithBoxes at 1433 ms since process start

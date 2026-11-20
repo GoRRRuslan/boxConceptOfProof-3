@@ -30,9 +30,9 @@ dependencies {
   compileOnly 'com.facebook.react:react-android'
 
   // Google Filament: the rendering engine, the glTF loader (gltfio) and the KTX image loader for the environment map.
-  implementation 'com.google.android.filament:filament-android:1.69.5'
-  implementation 'com.google.android.filament:gltfio-android:1.69.5'
-  implementation 'com.google.android.filament:filament-utils-android:1.69.5'
+  implementation 'com.google.android.filament:filament-android:1.57.1'
+  implementation 'com.google.android.filament:gltfio-android:1.57.1'
+  implementation 'com.google.android.filament:filament-utils-android:1.57.1'
 
   testImplementation 'junit:junit:4.13.2'
   testImplementation 'org.json:json:20240303'

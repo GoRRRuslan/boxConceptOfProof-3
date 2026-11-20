@@ -28,7 +28,7 @@ Verified on **release builds**, iOS Simulator (iPhone 17, iOS 27) and Android Em
 - ✅ exactly-once purchase (unit tests; on a device: one purchase = one deduction, seen on both platforms)
 - ✅ `yarn ciPipeline` clean, `yarn test` green, Swift (XCTest) and Kotlin (JUnit) parity tests green
 - ✅ catalogue scroll FPS: iOS 60.0 (0 slow frames after the first window), Android 60.0 after the first 3 windows (see [PERFORMANCE.md](docs/PERFORMANCE.md))
-- ✅ Android boxes appear within a few seconds of launch (progressive quality, see [PERFORMANCE.md 2b](docs/PERFORMANCE.md)); **Android has no shadows** (they made the first boxes appear only after ~10-14 s on the emulator).
+- ✅ Android boxes are on screen with the list (first frame 33-38 ms after the data; Filament runs on Vulkan, the OpenGL backend needed 10-14 s to compile shaders on the emulator, see [PERFORMANCE.md 2b](docs/PERFORMANCE.md))
 - ⚠️ **Not verified / gaps:** Rare reveal on iOS and Legendary on iOS (Legendary and Rare shown on Android, Epic and Common on iOS), failure injection only `serverError` and only on Android (the other modes by unit tests), pinch only on iOS (adb cannot send it), press squeeze not caught in a screenshot, device tilt, physical devices, iOS boxes are ~10 % smaller than in repo 1 (not fixed). Details: [docs/TEST_CHECKLIST.md](docs/TEST_CHECKLIST.md).
 
 ## 2. Quick start
@@ -123,7 +123,7 @@ docs/                         documentation, media (screenshots), data (raw FPS 
 ## 8. Known limits and decisions
 
 - iOS look differs from Android and from repo 1 in small ways; every known difference is in [docs/ANIMATIONS.md](docs/ANIMATIONS.md#what-differs-from-the-first-version-react-native-filament).
-- The mock API takes 700 ms: the list shows "Loading boxes…" for that long (same as repo 1); the native scene is created and its model parsed in the first ~20 ms (iOS), so on iOS boxes start popping in within about 5 ms of the data arriving, then the entrance plays (520 ms + 90 ms per card, as in repo 1). On Android the first boxes are drawn with a cheap pipeline within a few seconds of launch, and the full look (minus shadows) follows 2.5 s later.
+- The mock API takes 700 ms: the list shows "Loading boxes…" for that long (same as repo 1); the native scene is created and its model parsed in the first ~20 ms (iOS), so on iOS boxes start popping in within about 5 ms of the data arriving, then the entrance plays (520 ms + 90 ms per card, as in repo 1). On Android the first boxes are drawn with the list too (Vulkan backend).
 - SceneKit is in maintenance at Apple; chosen for robustness and zero extra code for PBR/shadows/SSAO/bloom (see NATIVE_SCENE.md).
 - `ios/` and `android/` are generated and git-ignored; `modules/mystery-scene/ios/Assets/box.glb` is a second copy of `assets/box.glb` (CocoaPods cannot read outside the pod folder).
 
@@ -132,6 +132,7 @@ docs/                         documentation, media (screenshots), data (raw FPS 
 | Symptom | Cause / fix |
 |---|---|
 | iOS: list shows, no boxes | `box.glb` missing from `MysteryScene.bundle` (copy it into `modules/mystery-scene/ios/Assets/`, `pod install`) |
+| Android: list but no boxes for 10+ s | OpenGL backend shader compile on the emulator; the scene uses Vulkan (`FilamentBoxScene.kt`) |
 | Android build: `Namespace ... 'native' is not a valid Java package` | use `android.package` `...nativeapp` and the plugin for the application id (already configured) |
 | Android: old JavaScript after a rebuild | delete `android/app/build/generated/assets` and `android/app/build/intermediates/assets`, rebuild |
 | Overlay / auto-scroll missing in a measurement build | the env vars are baked at bundle time; rebuild after deleting the bundle caches |

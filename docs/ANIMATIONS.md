@@ -258,7 +258,7 @@ More screenshots: pinch zoom ([iOS](media/ios-14-pinch-zoom.png)), double-tap re
 
 - **Engines:** SceneKit on iOS (the first version used Filament on both). Lights, shadows, ambient occlusion and bloom are SceneKit's equivalents, tuned by eye, so the iOS look differs a little: a different tone curve, softer highlights, a generated studio environment instead of Filament's KTX.
 - **Light from inside the box:** visible on both platforms in the prize colour (iOS emission intensity 1.6, Android the emissive factor), roughly like the first version.
-- **Android has no shadows and its post effects (FXAA, dithering, ambient occlusion, bloom) start 2.5 s after the first box appears**, because compiling them delayed the first picture by 10+ s on the emulator. iOS has all of them from the start.
+- **Android and iOS look different in detail** (engines): Android has all effects including shadows (Filament on Vulkan); iOS uses SceneKit equivalents.
 - **Box size:** the iOS boxes are about 10 % smaller in their slots than in the first version (SceneKit's field-of-view mapping); layout is identical otherwise.
 - **Background:** transparent over the app background on both platforms.
 - **Behaviour is otherwise the same:** same numbers, same state machine (proved by the shared vectors), but timers (sounds, reveal) stay in JavaScript.

@@ -101,7 +101,7 @@ The facade passes the scroll view's React tag (`FlashList.getScrollableNode()`) 
 
 | | iOS | Android |
 |---|---|---|
-| Engine | **SceneKit** (Metal) | **Google Filament** (Vulkan/GLES) used directly: `filament-android`, `gltfio-android`, `filament-utils-android` |
+| Engine | **SceneKit** (Metal) | **Google Filament on its Vulkan backend** (OpenGL ES fallback) used directly: `filament-android`, `gltfio-android`, `filament-utils-android` |
 | Model | own GLB reader (`GlbLoader.swift`) builds `SCNGeometry` + PBR `SCNMaterial` | gltfio `AssetLoader` (instanced asset) |
 | View | `SCNView` | `TextureView` (keeps alpha / fade animations of the screen working) |
 | Loop | `SCNSceneRendererDelegate.updateAtTime`, `isPlaying` toggled | `Choreographer` frame callback, posted only while needed |

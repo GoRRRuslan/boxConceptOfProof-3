@@ -8,13 +8,12 @@ Method: release builds with `EXPO_PUBLIC_SHOW_PERFORMANCE=1 EXPO_PUBLIC_AUTO_SCR
 
 | Scenario | iOS (iPhone 17 Simulator, headless of nothing: simulator window) | Android (MW_Pixel9_API_37, emulator `-no-window`) | Repo 1 (reported) |
 |---|---|---|---|
-| Catalogue scrolling, all windows | **60.0 FPS**, 76 windows, 4,591 frames, 1 slow frame, worst frame 50 ms | **59.5 FPS**, 74 windows, 4,404 frames, 6 slow frames, worst frame 400 ms | 60.0 FPS, 0 slow frames, worst 17 ms |
-| Same, after the first 3 windows | 60.0 (windows 2…: 0 slow frames) | **60.0 FPS, 0 slow frames** (69 windows) | |
-| Opening flow (select → buy → open → reveal → Done), 2-3 purchases, release build with the overlay | **60.0 FPS**, 33 windows, 1,938 frames, 1 slow frame (53 ms) ([log](data/ios-opening-flow.log)) | **58.5 FPS**, 44 windows, 2,574 frames, 43 slow frames (1.7 %), worst 100 ms, lowest window 42.3 FPS ([log](data/android-opening-flow.log)) | 60.0 / 59.6 |
+| Catalogue scrolling, all windows | **60.0 FPS**, 76 windows, 4,591 frames, 1 slow frame, worst frame 50 ms | **60.0 FPS**, 69 windows, 4,174 frames, 0 slow frames, worst frame 17 ms (Vulkan, see 2b) | 60.0 FPS, 0 slow frames, worst 17 ms |
+| Opening flow (select → buy → open → reveal → Done), release build with the overlay | **60.0 FPS**, 33 windows, 1,938 frames, 1 slow frame (53 ms) ([log](data/ios-opening-flow.log)) | **59.8 FPS**, 58 windows, 3,490 frames, 11 slow frames (0.3 %), worst 50 ms ([log](data/android-opening-flow.log)) | 60.0 / 59.6 |
 
 Raw logs: [data/ios-catalogue-scroll.log](data/ios-catalogue-scroll.log), [data/android-catalogue-scroll.log](data/android-catalogue-scroll.log). Analysis: `python3 scripts/perf/analyzeRenderFps.py <ios|android> 0 1000000 <log>`.
 
-Honest reading: in steady state both platforms hold 60 FPS with no slow frames, like repo 1. On Android the first ~3 seconds after launch contain slow frames (windows 0-2: 47.6, 36.0, 37.4 FPS, worst frame 400 ms): Filament compiles its materials when the boxes first draw. iOS shows one 50 ms frame in its first window. The 60.0 figures are the display rate: the simulators/emulator cannot show more, so this says "no frame was late", not "there is headroom". These are emulator numbers, not a physical device.
+Honest reading: both platforms hold 60 FPS in the catalogue like repo 1, and the opening flow is at 60.0 (iOS) / 59.8 (Android). The 60.0 figures are the display rate: the simulators/emulator cannot show more, so this says "no frame was late", not "there is headroom". These are emulator numbers, not a physical device.
 
 ## 2. Startup timeline (boxes appearing)
 
@@ -27,17 +26,21 @@ Release builds, `StartupTrace` log marks (`adb logcat -s MysteryScene`, `log str
 | cards received (the mock API answered, 700 ms latency) | 697 | 1,198–1,817 |
 | first frame with visible boxes | **701** (+4 ms) | **+6 to +31 ms** after the cards |
 
-So (on iOS, and for the computed frames on Android) the native side is ready long before the list. **Android pixels appear ~10-14 s later, see 2b.** the model is parsed in the first ~20-40 ms after the scene view exists, in parallel with the 700 ms mock API, and the first frame with boxes follows the data by **4 ms (iOS) / ≤31 ms (Android)**. What you see between list and boxes is (a) the entrance animation itself (boxes grow from nothing, 520 ms, 90 ms apart, as in repo 1) and (b) on Android the shader compilation hitch described above. The "Loading boxes…" phase is the mock API's 700 ms latency, identical to repo 1.
+So (on iOS, and for the computed frames on Android) the native side is ready long before the list. On Android the OpenGL backend used to draw them 10-14 s later; with Vulkan they appear at once (2b). the model is parsed in the first ~20-40 ms after the scene view exists, in parallel with the 700 ms mock API, and the first frame with boxes follows the data by **4 ms (iOS) / ≤31 ms (Android)**. What you see between list and boxes is (a) the entrance animation itself (boxes grow from nothing, 520 ms, 90 ms apart, as in repo 1) and (b) on Android the shader compilation hitch described above. The "Loading boxes…" phase is the mock API's 700 ms latency, identical to repo 1.
 
 Before/after of the fixes made while investigating: Android used an opaque black clear colour (looked like a dark rectangle behind the list): now transparent (the app background shows through); iOS shipped without `box.glb` in its resource bundle (list without any boxes): fixed (`modules/mystery-scene/ios/Assets`). Both are correctness fixes, not timing changes. Not done: preloading the scene before the screen mounts, warming Filament's pipelines before the first visible frame, and mounting the view during "Loading boxes…" (it is already mounted then, with no cards). These are the next steps for the Android hitch.
 
-### 2b. Android: material compilation delay (found in round 2, fixed by progressive quality)
+### 2b. Android: the OpenGL backend compiled shaders for 10-14 s (fixed: Vulkan backend)
 
-On the Android emulator the first version of the scene drew **nothing for ~10-14 s after launch**: the list showed, the scene computed everything (the marks above), but Filament had not finished compiling its shaders. Bisecting on the emulator: with shadows, FXAA, dithering, ambient occlusion and bloom all **off** the boxes were on screen in ~4 s; with only the post effects on (shadows off) in ~8 s; with everything on after ~10-14 s. What helped nothing: a 2 mm warm-up box (boxes then did not appear at all, reason not found), `setLensProjection` (boxes disappeared), JIT shader provider (not in this Filament Java API).
+In round 2 the Android scene showed **no boxes for 10-14 s after launch** on the emulator: the scene computed everything, but Filament's OpenGL ES backend (through the emulator's GL translator) had not finished compiling the glTF shaders. Bisect with the OpenGL backend: all effects off ~4 s, post effects on ~8 s, everything on 10-14 s. Not the cause: the Filament version (1.57.1 behaves like 1.69.5), the material provider (the same default ubershader archive as repo 1), warm-up boxes, lens projection, progressive quality (tried, removed again).
 
-**Fix (progressive quality):** the scene starts with the cheap pipeline (no shadows, no AA, no dithering, no AO, no bloom). The boxes appear first; 2.5 s after the first visible box FXAA, dithering, ambient occlusion and bloom are switched on (`fullQuality` mark). The render loop also no longer rests before frames were really drawn and keeps drawing for 15 s after the data arrives. **Measured (cold launches, release, `docs/data/android-startup-trace.txt`):** cards at 1.37-1.48 s after process start, first frame with boxes 25-29 ms later, full quality at ~3.9-4.0 s. Screenshots show the boxes by ~6 s after launch (the screenshot lag of `adb` makes finer timing impossible; before the fix ≥ 12 s).
+**Fix: `Engine.create(Engine.Backend.VULKAN)`** (falls back to the default backend if Vulkan is missing). With Vulkan, **every effect on from the first frame (shadows, FXAA, dithering, ambient occlusion, bloom)** the boxes are on screen at the first screenshot after the list appears, on 4 of 4 cold launches (`docs/data/android-startup-trace.txt`): cards received 1.34-1.42 s after process start (the 700 ms mock API plus app start), first frame with boxes 33-38 ms later; screenshots taken ~1.5-3 s after launch already show them. Why repo 1 did not suffer: not verified (it used its own prebuilt Filament libraries; the default backend of that build was not checked).
 
-**Cost:** Android has **no shadows** (the lid no longer shades the inside of the box and the box no longer shades itself; the first version had them). Enabling them again brings the delay back on this emulator. A real device is likely faster, not tested.
+### Final numbers (Android, Vulkan, headless emulator, release)
+
+- Catalogue scroll: **60.0 FPS, 69 windows, 4,174 frames, 0 slow frames, worst frame 17 ms** (same as repo 1).
+- Opening flow, 4 purchases: **59.8 FPS**, 58 windows, 3,490 frames, 11 slow frames (0.3 %), worst frame 50 ms, lowest window 57.0.
+- Caveat: with the emulator **window** open (not headless) the same build scrolled at only 43-46 FPS in two runs: the window compositing/Vulkan path of the emulator costs a lot. Measure headless (`-no-window`).
 
 ## 3. Scroll sync
 

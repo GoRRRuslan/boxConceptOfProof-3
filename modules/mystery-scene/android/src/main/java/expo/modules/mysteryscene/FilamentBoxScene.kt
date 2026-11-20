@@ -34,7 +34,14 @@ data class BoxLook(val colorLinear: List<Double>, val roughness: Double, val met
  * All calls must come from the thread that owns the engine (the main thread).
  */
 class FilamentBoxScene(private val context: Context) {
-  val engine: Engine = Engine.create()
+  // Vulkan: on the Android emulator (and many GPUs) Filament's OpenGL ES backend needed 10-14 s to compile the glTF shaders before the
+  // first box showed; Vulkan shows the boxes within ~2-5 s with every effect on. Falls back to the default backend where Vulkan is missing.
+  val engine: Engine = try {
+    Engine.create(Engine.Backend.VULKAN)
+  } catch (error: Exception) {
+    android.util.Log.w("MysteryScene", "Vulkan unavailable, using the default backend: $error")
+    Engine.create()
+  }
   val renderer: Renderer = engine.createRenderer()
   val scene: Scene = engine.createScene()
   val view: View = engine.createView()
@@ -76,6 +83,7 @@ class FilamentBoxScene(private val context: Context) {
     configureCamera()
     configureLights()
     configureEnvironment()
+    enableFullQuality()
   }
 
   // ------------------------------------------------------------------ Setup
@@ -128,7 +136,7 @@ class FilamentBoxScene(private val context: Context) {
     data class LightSpec(val intensity: Float, val kelvin: Float, val direction: DoubleArray, val castsShadows: Boolean)
 
     val specs = listOf(
-      LightSpec(11_000f, 5_600f, doubleArrayOf(0.45, -0.75, -0.55), false),
+      LightSpec(11_000f, 5_600f, doubleArrayOf(0.45, -0.75, -0.55), true),
       LightSpec(5_500f, 9_000f, doubleArrayOf(-0.65, -0.25, 0.7), false),
       LightSpec(1_800f, 6_500f, doubleArrayOf(-0.2, 0.9, -0.4), false),
     )
@@ -150,10 +158,10 @@ class FilamentBoxScene(private val context: Context) {
   // Reflections of a neutral environment: what makes glossy and metallic boxes look glossy and metallic.
   private fun configureEnvironment() {
     val bytes = context.assets.open("env_ibl.ktx").use { ByteBuffer.wrap(it.readBytes()) }
-    indirectLight = KTX1Loader.createIndirectLight(engine, bytes, KTX1Loader.Options()).indirectLight?.also {
-      it.intensity = ENVIRONMENT_LIGHT_INTENSITY
-      scene.indirectLight = it
-    }
+    val light = KTX1Loader.createIndirectLight(engine, bytes, KTX1Loader.Options())
+    light.intensity = ENVIRONMENT_LIGHT_INTENSITY
+    scene.indirectLight = light
+    indirectLight = light
   }
 
   // --------------------------------------------------------------- The model
@@ -189,8 +197,8 @@ class FilamentBoxScene(private val context: Context) {
           box.allEntities.forEach { entity ->
             val renderable = renderables.getInstance(entity)
             if (renderable != 0) {
-              renderables.setCastShadows(renderable, false)
-              renderables.setReceiveShadows(renderable, false)
+              renderables.setCastShadows(renderable, true)
+              renderables.setReceiveShadows(renderable, true)
             }
           }
         }
@@ -299,10 +307,8 @@ class FilamentBoxScene(private val context: Context) {
     }
   }
 
-  // Progressive quality: the first boxes are drawn with the cheap pipeline (Filament compiles the glTF materials and the post
-  // processing shaders in the background, which takes seconds on the emulator and would leave the list empty). Once boxes are
-  // on screen the full look is switched on: FXAA, dithering, ambient occlusion, bloom (shadows are not re-enabled, see docs).
-  fun enableFullQuality() {
+  // The full look: FXAA, dithering, ambient occlusion, bloom (shadows are set on the light and the renderables).
+  private fun enableFullQuality() {
     view.antiAliasing = View.AntiAliasing.FXAA
     view.dithering = View.Dithering.TEMPORAL
     view.ambientOcclusionOptions = View.AmbientOcclusionOptions().apply {

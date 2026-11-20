@@ -45,7 +45,7 @@ Pinch, double-tap reset, press squeeze, swipe-up-to-open, Rare/Epic/Legendary re
 
 | Case | Android | iOS |
 |---|---|---|
-| Boxes visible after launch | ✅ after the fix (progressive quality); before: ~10-14 s late (bug B6) | ✅ |
+| Boxes visible after launch | ✅ with the Vulkan backend (4/4 cold launches: boxes at the first screenshot, first frame 33-38 ms after the data); before: 10-14 s late (bug B6) | ✅ |
 | Pinch zoom | ➖ (adb cannot send two fingers) | ✅ zoom to the 2x limit ([shot](media/ios-14-pinch-zoom.png)) |
 | Double-tap reset | ➖ | ✅ ([shot](media/ios-15-double-tap-reset.png)) |
 | Press squeeze | ⚠️ long press taken, effect not visible in the picture | ⚠️ same |
@@ -53,17 +53,17 @@ Pinch, double-tap reset, press squeeze, swipe-up-to-open, Rare/Epic/Legendary re
 | Reveal Common / Rare / Epic / Legendary | Common ✅, Rare ✅ (purchase 2), Legendary ✅ (5th purchase: 4 Starter + Classic, balance $650 = exactly-once) | Common ✅, Epic ✅ ([shot](media/ios-19-reveal-epic.png)), Rare ⚠️ shot taken during the flow (`ios-18-reveal-rare.png`), Legendary ➖ |
 | Failure injection `serverError` | ✅ error text, balance unchanged $1,000, Buy available again ([shot](media/android-22-failure-server-error.png)) | ➖ (same TypeScript; unit tests) |
 | `networkError`, `responseLost` | ➖ unit tests only | ➖ |
-| Opening-flow FPS | 58.5 FPS, 1.7 % slow frames | 60.0 FPS |
+| Opening-flow FPS | 59.8 FPS, 0.3 % slow frames (Vulkan) | 60.0 FPS |
 | iOS glow strength | n/a | ✅ intensity 1.6, visible in the prize colour ([shot](media/ios-09-lid-opening-glow.png)); 4 blew out to white |
 | Box size vs repo 1 (~10 % smaller) | ➖ not fixed (no comparable final-state screenshot of repo 1) | ➖ not fixed |
 
-Still not run: device tilt, background/foreground, empty-collection screen, physical devices, Android shadows (removed, see PERFORMANCE.md 2b).
+Still not run: iOS Legendary, `networkError` / `responseLost` on a device, press squeeze visible in a picture, iOS box size vs repo 1, device tilt, background/foreground, empty-collection screen, physical devices.
 
 ## 4c. Bugs of round 2
 
 | # | Platform | Symptom | Cause / fix |
 |---|---|---|---|
-| B6 | Android | Boxes only ~10-14 s after launch (empty list) | Filament shader compilation on the emulator; progressive quality, shadows removed |
+| B6 | Android | Boxes only ~10-14 s after launch (empty list) | OpenGL ES backend shader compilation on the emulator; fixed by the Vulkan backend (all effects, shadows included) |
 | B7 | Android | `uiautomator dump` fails while the reveal animates (testID taps "not found") | test tooling; scripts use coordinates for Buy/Open/Done |
 | B8 | iOS | Glow white at intensity 4, weak at 1 | set to 1.6 |
 
