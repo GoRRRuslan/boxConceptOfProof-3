@@ -14,6 +14,15 @@ const mockSetParams = jest.fn()
 
 jest.mock('@react-navigation/native', () => ({ useNavigation: () => ({ setParams: mockSetParams }) }))
 
+// Short waits for the scene, so that its cases can be tested in real time.
+jest.mock('@flows/catalogueFlow/_config/catalogueLayoutConfig', () => ({
+  ...jest.requireActual<Record<string, unknown>>('@flows/catalogueFlow/_config/catalogueLayoutConfig'),
+  ENTRANCE_DURATION_MILLISECONDS: 50,
+  ENTRANCE_STAGGER_MILLISECONDS: 10,
+  SCENE_READY_SETTLE_MILLISECONDS: 100,
+  SCENE_READY_TIMEOUT_MILLISECONDS: 700,
+}))
+
 jest.mock('react-native-gesture-handler', () => ({
   usePanGesture: () => ({}),
   usePinchGesture: () => ({}),
@@ -75,6 +84,45 @@ describe('useCatalogueFacade', () => {
     })
 
     expect(result.current.isLoadingBoxes).toBe(false)
+  })
+
+  it('is not ready until the native scene has loaded its model and settled, then is', async () => {
+    const { result } = await renderHook(() => useCatalogueFacade(), { wrapper: createWrapper() })
+
+    await waitFor(() => {
+      expect(result.current.cards).toHaveLength(BOX_CATALOGUE.length)
+    })
+
+    // The boxes are loaded, the model is not: still not ready.
+    expect(result.current.isSceneReady).toBe(false)
+
+    await act(() => {
+      result.current.handleModelLoaded()
+    })
+
+    // The model is there, but the boxes are still popping in and the picture has not settled.
+    expect(result.current.isSceneReady).toBe(false)
+
+    await waitFor(() => {
+      expect(result.current.isSceneReady).toBe(true)
+    })
+  })
+
+  it('stops waiting for a scene whose model never loads', async () => {
+    const { result } = await renderHook(() => useCatalogueFacade(), { wrapper: createWrapper() })
+
+    await waitFor(() => {
+      expect(result.current.cards).toHaveLength(BOX_CATALOGUE.length)
+    })
+
+    expect(result.current.isSceneReady).toBe(false)
+
+    await waitFor(
+      () => {
+        expect(result.current.isSceneReady).toBe(true)
+      },
+      { timeout: 2000 },
+    )
   })
 
   it('keeps the tab bar while the list is shown', async () => {

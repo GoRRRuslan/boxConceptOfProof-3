@@ -41,3 +41,10 @@ export const PRESS_DURATION_MILLISECONDS = 140
 
 // Every box sits a little differently (turned by this much, repeating every three boxes).
 export const SIGNATURE_YAW_STEP_RADIANS = 0.18
+
+// The list is shown (and the loader taken away) only when the scene is really ready: the model is loaded, every box has popped in
+// and the picture has had time to settle (the first native frames compile shaders and run unevenly). Without this the loader ended
+// while the tiles were still empty, and the first scroll right after it rattled.
+export const SCENE_READY_SETTLE_MILLISECONDS = 1000
+// Never wait longer than this for the scene (a model that fails to load must not keep the loader forever).
+export const SCENE_READY_TIMEOUT_MILLISECONDS = 8000

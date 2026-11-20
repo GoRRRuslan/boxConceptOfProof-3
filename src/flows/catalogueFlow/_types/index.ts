@@ -41,6 +41,8 @@ export interface ICatalogueFacade {
   errorText: string
   retryLabelText: string
   isLoadingBoxes: boolean
+  // False until the 3D scene is ready to be shown: the loader stays up until then, the list is hidden.
+  isSceneReady: boolean
   isErrorBoxes: boolean
   cards: ICatalogueCard[]
   viewport: ICatalogueViewport | null
@@ -53,6 +55,7 @@ export interface ICatalogueFacade {
   isPerformanceOverlayVisible: boolean
   handleFrameStats: (event: IMysterySceneFrameStatsEvent) => void
   handleScrollSourceChange: (event: IMysterySceneScrollSourceEvent) => void
+  handleModelLoaded: () => void
   renderFrameStats: IRenderFrameStats | null
   isRenderPaused: boolean
   handleListLayout: (event: LayoutChangeEvent) => void

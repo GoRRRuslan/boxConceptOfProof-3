@@ -5,7 +5,15 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent } from 'react-native'
 
-import { CARD_HEIGHT, LIST_TOP_PADDING } from '@flows/catalogueFlow/_config/catalogueLayoutConfig'
+import {
+  CARD_HEIGHT,
+  ENTRANCE_DURATION_MILLISECONDS,
+  ENTRANCE_STAGGER_MILLISECONDS,
+  LIST_TOP_PADDING,
+  SCENE_READY_SETTLE_MILLISECONDS,
+  SCENE_READY_TIMEOUT_MILLISECONDS,
+} from '@flows/catalogueFlow/_config/catalogueLayoutConfig'
+import { logDiagnostic } from '@services/performance/diagnosticLog'
 import { useAdapterCatalogueCards } from '@flows/catalogueFlow/_adapters/useAdapterCatalogueCards'
 import { useOpeningFacade } from '@flows/openingFlow/_facades/useOpeningFacade'
 import { EOpeningPhase } from '@flows/openingFlow/_types'
@@ -43,6 +51,9 @@ export const useCatalogueFacade = (): ICatalogueFacade => {
   // The scene reads the list's native scroll view itself once it is attached; until then (or if that fails) JavaScript feeds it.
   const [scrollViewTag, setScrollViewTag] = useState<number | null>(null)
   const [isNativeScroll, setIsNativeScroll] = useState<boolean>(false)
+  // The native scene says its model is loaded; the scene counts as ready a little later (boxes popped in, frames steady).
+  const [isModelLoaded, setIsModelLoaded] = useState<boolean>(false)
+  const [isSceneReady, setIsSceneReady] = useState<boolean>(false)
 
   // --------------------------- Store ------------------------- //
   const balanceInCents = useStore(state => state.balanceInCents)
@@ -75,6 +86,12 @@ export const useCatalogueFacade = (): ICatalogueFacade => {
     if (!isNativeScroll) {
       MysteryScene.setScrollOffset(event.nativeEvent.contentOffset.y)
     }
+  }
+
+  const handleModelLoaded = () => {
+    logDiagnostic('scene.model.loaded')
+
+    setIsModelLoaded(true)
   }
 
   const handleScrollSourceChange = (event: IMysterySceneScrollSourceEvent) => {
@@ -131,6 +148,34 @@ export const useCatalogueFacade = (): ICatalogueFacade => {
     }
   }, [viewport, cards.length])
 
+  // The scene is ready when the model has been loaded, every box has popped in and the picture has settled. The wait is capped, so
+  // that a model that fails to load does not keep the loader up forever.
+  useEffect(() => {
+    if (isSceneReady || cards.length === 0) {
+      return undefined
+    }
+
+    const entranceMilliseconds = (cards.length - 1) * ENTRANCE_STAGGER_MILLISECONDS + ENTRANCE_DURATION_MILLISECONDS
+    const readyTimer = isModelLoaded
+      ? setTimeout(() => {
+          logDiagnostic('scene.ready', { isTimedOut: false })
+
+          setIsSceneReady(true)
+        }, entranceMilliseconds + SCENE_READY_SETTLE_MILLISECONDS)
+      : undefined
+    const timeoutTimer = setTimeout(() => {
+      logDiagnostic('scene.ready', { isTimedOut: true })
+
+      setIsSceneReady(true)
+    }, SCENE_READY_TIMEOUT_MILLISECONDS)
+
+    return () => {
+      clearTimeout(readyTimer)
+
+      clearTimeout(timeoutTimer)
+    }
+  }, [isSceneReady, isModelLoaded, cards.length])
+
   return {
     titleText: t('catalogue.title'),
     balanceLabelText: t('catalogue.balanceLabel'),
@@ -139,6 +184,7 @@ export const useCatalogueFacade = (): ICatalogueFacade => {
     errorText: t('catalogue.error'),
     retryLabelText: t('catalogue.retry'),
     isLoadingBoxes,
+    isSceneReady,
     isErrorBoxes,
     cards,
     viewport,
@@ -149,6 +195,7 @@ export const useCatalogueFacade = (): ICatalogueFacade => {
     isPerformanceOverlayVisible: IS_PERFORMANCE_OVERLAY_VISIBLE,
     handleFrameStats,
     handleScrollSourceChange,
+    handleModelLoaded,
     renderFrameStats,
     isRenderPaused,
     handleListLayout,

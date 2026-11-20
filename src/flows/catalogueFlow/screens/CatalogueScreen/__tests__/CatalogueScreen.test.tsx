@@ -31,6 +31,7 @@ const baseFacade = {
   errorText: 'Could not load the boxes.',
   retryLabelText: 'Try again',
   isLoadingBoxes: false,
+  isSceneReady: true,
   isErrorBoxes: false,
   cards: [
     {
@@ -63,6 +64,7 @@ const baseFacade = {
   handleCardPressIn: jest.fn(),
   handleCardPressOut: jest.fn(),
   handleFrameStats: jest.fn(),
+  handleModelLoaded: jest.fn(),
   handleScrollSourceChange: jest.fn(),
 } as unknown as ICatalogueFacade
 
@@ -107,6 +109,22 @@ describe('CatalogueScreen', () => {
     await render(<CatalogueScreen />)
 
     expect(screen.getByTestId('catalogueLoading')).toBeTruthy()
+  })
+
+  it('keeps the loader up until the 3D scene is ready, although the boxes are already loaded', async () => {
+    mockFacade({ isLoadingBoxes: false, isSceneReady: false })
+
+    await render(<CatalogueScreen />)
+
+    expect(screen.getByTestId('catalogueLoading')).toBeTruthy()
+  })
+
+  it('takes the loader away once the scene is ready', async () => {
+    mockFacade({ isLoadingBoxes: false, isSceneReady: true })
+
+    await render(<CatalogueScreen />)
+
+    expect(screen.queryByTestId('catalogueLoading')).toBeNull()
   })
 
   it('offers a retry when the boxes could not be loaded', async () => {

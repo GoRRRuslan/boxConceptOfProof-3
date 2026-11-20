@@ -13,12 +13,13 @@ interface ICatalogueSceneProps {
   scrollViewTag: number | null
   isFrameStatsEnabled: boolean
   onFrameStats: (event: IMysterySceneFrameStatsEvent) => void
+  onModelLoaded: () => void
   onScrollSourceChange: (event: IMysterySceneScrollSourceEvent) => void
 }
 
 // The ONE 3D scene of the app: a native view (SceneKit on iOS, Filament on Android) that fills the list area and
 // sits behind the transparent cards. It loads the model, owns the frame loop and places every box itself.
-export const CatalogueScene = ({ cardLooks, scrollViewTag, isFrameStatsEnabled, onFrameStats, onScrollSourceChange }: ICatalogueSceneProps) => {
+export const CatalogueScene = ({ cardLooks, scrollViewTag, isFrameStatsEnabled, onFrameStats, onModelLoaded, onScrollSourceChange }: ICatalogueSceneProps) => {
   const styles = useMemo(() => makeStyles(), [])
 
   return (
@@ -28,6 +29,7 @@ export const CatalogueScene = ({ cardLooks, scrollViewTag, isFrameStatsEnabled, 
       scrollViewTag={scrollViewTag}
       isFrameStatsEnabled={isFrameStatsEnabled}
       onFrameStats={onFrameStats}
+      onModelLoaded={onModelLoaded}
       onScrollSourceChange={onScrollSourceChange}
       testID="catalogueScene"
     />
