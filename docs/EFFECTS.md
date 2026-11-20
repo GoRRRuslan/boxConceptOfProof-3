@@ -40,12 +40,19 @@ Outside an opening: a soft coloured **glow behind every box** (the colour of the
 - Everything is tinted with the colour of the prize (multiplied by the rarity boost).
 - JavaScript only tells the scene the prize: `MysteryScene.setGlowColor(red, green, blue, rarityLevel)` when the purchase succeeded. Everything else is computed natively from "now".
 
+## Look of the scene
+
+- **Vignette.** A soft dark vignette ([`SceneVignette`](../src/components/SceneVignette/SceneVignette.tsx), a stretched alpha PNG written by `scripts/assets/generateVignette.mjs`) lies over the 3D scene and under the texts of the list: it darkens the corners and pulls the eye to the middle. It is an image over the scene, not an engine effect, so it is identical on both platforms and costs nothing per frame.
+- **Iridescence.** The glossy boxes (metallic finish from 0.25 up, i.e. the three dearest) shimmer: a colour shift (gold → magenta → cyan, at most 0.16 in linear RGB) is added to the base colour and moves with the turn of the box, so it plays while you scroll or turn the box. `getIridescenceStrength` and `computeIridescenceTint` in `computeSceneEffects`. It is a colour shift of the base colour, **not** a thin-film material: Filament's glTF loader does not confirm `KHR_materials_iridescence`, and one approach had to work on all engines.
+- **Depth-of-field look.** The faint motes behind the box are drawn bigger and softer the deeper they float (a circle of confusion, as bokeh). There is **no full-screen depth-of-field pass**: the scene has one box in focus and an empty dark background, so the pass would show almost nothing and would cost frames.
+- **Colour grading.** A touch of contrast and saturation, in both engines: SceneKit `camera.contrast = 0.05` and `camera.saturation = 1.08`; Filament `ColorGrading.Builder().contrast(1.05).saturation(1.08)` set on the view. The other two repositories cannot do this (see their `EFFECTS.md`), so the colours here are a little richer.
+
 ## Interaction
 
 - **Hold a finger on a bought box** for 0.45 s: it charges and opens (an alternative to swiping up).
 - The haptic engine pulses along the anticipation (light → heavy).
 - The watch of the reveal slides against the tilt of the phone and catches the light now and then.
 
-## Ideas not done (on purpose)
+## Ideas not done
 
-Depth of field, vignette, colour grading and lens flare (the engine options exist but are not exposed by every binding, and every full-screen effect costs frames); iridescence and anisotropy on the box materials (not confirmed in Filament's glTF loader); a 3D collection shelf.
+A full-screen depth-of-field pass and lens flare (cost frames, little to show in this scene); a thin-film iridescent material (not confirmed in Filament's glTF loader); a 3D collection shelf.
