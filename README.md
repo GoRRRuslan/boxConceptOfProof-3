@@ -4,7 +4,7 @@
 >
 > **One rule above all:** test on **one platform at a time** (iOS Simulator *or* Android Emulator, the other shut down), see [docs/TESTING.md](docs/TESTING.md#rule-1--one-platform-at-a-time).
 
-The same app as `boxConceptOfProof-1` (scrollable catalogue of real-time 3D mystery boxes, inspect, buy with a virtual balance through an async mock API, animated lid and rarity reveal, collection), with one big difference: **the 3D is a purely native module**, written in **Swift (SceneKit) for iOS** and **Kotlin (Filament) for Android**. There is **no JavaScript 3D library** (no three, no R3F, no expo-gl, no react-native-filament). The native code loads the model, owns the frame loop and does all 3D work; TypeScript keeps everything else.
+A scrollable catalogue of real-time 3D mystery boxes, inspect, buy with a virtual balance through an async mock API, animated lid and rarity reveal, collection. The big difference from a usual React Native 3D app: **the 3D is a purely native module**, written in **Swift (SceneKit) for iOS** and **Kotlin (Filament) for Android**. There is **no JavaScript 3D library**. The native code loads the model, owns the frame loop and does all 3D work; TypeScript keeps everything else.
 
 ![](docs/media/ios-02-catalogue.png) ![](docs/media/ios-10-reveal-common.png) ![](docs/media/android-02-catalogue.png) ![](docs/media/android-10-reveal-common.png)
 
@@ -29,7 +29,7 @@ Verified on **release builds**, iOS Simulator (iPhone 17, iOS 27) and Android Em
 - ✅ `yarn ciPipeline` clean, `yarn test` green, Swift (XCTest) and Kotlin (JUnit) parity tests green
 - ✅ catalogue scroll FPS: iOS 60.0 (0 slow frames after the first window), Android 60.0 after the first 3 windows (see [PERFORMANCE.md](docs/PERFORMANCE.md))
 - ✅ Android boxes are on screen with the list (first frame 33-38 ms after the data; Filament runs on Vulkan, the OpenGL backend needed 10-14 s to compile shaders on the emulator, see [PERFORMANCE.md 2b](docs/PERFORMANCE.md))
-- ⚠️ **Not verified / gaps:** Android pinch (adb cannot send two fingers), device tilt, physical devices. Verified on a device in round 3: iOS press squeeze (0.92), iOS `networkError` / `responseLost`, iOS box size identical to repo 1. Details: [docs/TEST_CHECKLIST.md](docs/TEST_CHECKLIST.md).
+- ⚠️ **Not verified / gaps:** Android pinch (adb cannot send two fingers), device tilt, physical devices. Verified on a device: iOS press squeeze (0.92), iOS `networkError` / `responseLost`. Details: [docs/TEST_CHECKLIST.md](docs/TEST_CHECKLIST.md).
 
 ## 2. Quick start
 
@@ -62,7 +62,7 @@ What to expect: scroll the list, tap a box, drag it, buy it, tap *Open the box*,
 
 ## 3. Architecture
 
-TypeScript (flows, facades, adapters, Zustand, React Query, mock API, overlays, sounds, haptics) is the same as in repo 1; see [CLAUDE.md](CLAUDE.md) for the conventions. The 3D is the only thing that moved.
+TypeScript (flows, facades, adapters, Zustand, React Query, mock API, overlays, sounds, haptics) follows the conventions in [CLAUDE.md](CLAUDE.md). The 3D lives in the native module.
 
 ```mermaid
 flowchart LR
@@ -105,7 +105,7 @@ Results are in [docs/TEST_CHECKLIST.md](docs/TEST_CHECKLIST.md); how to test by 
 
 ## 6. Performance
 
-Measured on release builds with the in-app meter (native frame times), list scrolling by itself for ~70 s: **iOS 60.0 FPS (4,591 frames, 1 slow frame in the first window), Android 59.5 FPS overall, 60.0 FPS with 0 slow frames after the first three windows** (the first ~3 s include Filament's material compilation, worst frame 400 ms). Repo 1 reported 60.0 FPS and 0 slow frames. Details, startup timeline and honest limits: [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
+Measured on release builds with the in-app meter (native frame times), list scrolling by itself for ~70 s: **iOS 60.0 FPS (4,591 frames, 1 slow frame in the first window), Android 60.0 FPS (4,174 frames, 0 slow frames, worst frame 17 ms)**; the emulator window also holds 60 FPS. Details, startup timeline and honest limits: [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
 
 ## 7. Project structure
 
@@ -115,15 +115,14 @@ plugins/                      Expo config plugin: Android application id
 src/                          flows (catalogueFlow, openingFlow, collectionFlow), components, services, networking, models
 src/services/sceneReference/  TypeScript reference of the scene maths + the test vector generator
 scripts/app, scripts/perf     restart/tap helpers, FPS sink and analysis
-scripts/device                two-agent device lock (take / release)
 scripts/native                native test runner
 docs/                         documentation, media (screenshots), data (raw FPS logs)
 ```
 
 ## 8. Known limits and decisions
 
-- iOS look differs from Android and from repo 1 in small ways; every known difference is in [docs/ANIMATIONS.md](docs/ANIMATIONS.md#what-differs-from-the-first-version-react-native-filament).
-- The mock API takes 700 ms: the list shows "Loading boxes…" for that long (same as repo 1); the native scene is created and its model parsed in the first ~20 ms (iOS), so on iOS boxes start popping in within about 5 ms of the data arriving, then the entrance plays (520 ms + 90 ms per card, as in repo 1). On Android the first boxes are drawn with the list too (Vulkan backend).
+- The iOS look differs from Android in small ways (two engines); every known difference is in [docs/ANIMATIONS.md](docs/ANIMATIONS.md#platform-differences).
+- The mock API takes 700 ms: the list shows "Loading boxes…" for that long; the native scene is created and its model parsed in the first ~20 ms (iOS), so on iOS boxes start popping in within about 5 ms of the data arriving, then the entrance plays (520 ms + 90 ms per card). On Android the first boxes are drawn with the list too (Vulkan backend).
 - SceneKit is in maintenance at Apple; chosen for robustness and zero extra code for PBR/shadows/SSAO/bloom (see NATIVE_SCENE.md).
 - `ios/` and `android/` are generated and git-ignored; `modules/mystery-scene/ios/Assets/box.glb` is a second copy of `assets/box.glb` (CocoaPods cannot read outside the pod folder).
 
@@ -136,4 +135,4 @@ docs/                         documentation, media (screenshots), data (raw FPS 
 | Android build: `Namespace ... 'native' is not a valid Java package` | use `android.package` `...nativeapp` and the plugin for the application id (already configured) |
 | Android: old JavaScript after a rebuild | delete `android/app/build/generated/assets` and `android/app/build/intermediates/assets`, rebuild |
 | Overlay / auto-scroll missing in a measurement build | the env vars are baked at bundle time; rebuild after deleting the bundle caches |
-| Both platforms laggy | only one simulator/emulator at a time (and take the device lock if another agent shares the Mac) |
+| Both platforms laggy | only one simulator/emulator at a time |

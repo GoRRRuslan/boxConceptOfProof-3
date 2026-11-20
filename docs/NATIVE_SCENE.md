@@ -129,4 +129,4 @@ What this proves: the native ports compute the same box poses, lid angles and gl
 
 ## 8. Where the look differs between the platforms
 
-See [ANIMATIONS.md, "What differs from the first version"](ANIMATIONS.md#what-differs-from-the-first-version-react-native-filament).
+See [ANIMATIONS.md, "Platform differences"](ANIMATIONS.md#platform-differences).

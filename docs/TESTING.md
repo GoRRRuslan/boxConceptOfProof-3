@@ -55,13 +55,6 @@ adb emu kill
 xcrun simctl boot "iPhone 17"      # then: open -a Simulator
 ```
 
-**Two agents, one Mac.** This project was built by an agent that shared the Mac with another one working on a sibling project. Rule 1 therefore also holds *across projects*: take the device lock before you boot anything and give it back when you are done (it shuts the devices down for you):
-
-```bash
-bash scripts/device/takeDeviceLock.sh take      # waits until the other holder is done
-bash scripts/device/takeDeviceLock.sh release   # simulators and emulators shut down, lock removed
-```
-
 Check what is running: `adb devices` (emulators) and `xcrun simctl list devices booted` (simulators). Both lists should show **one** device in total.
 
 ### Rule 2 — measure with a release build, not a debug build
@@ -122,7 +115,7 @@ Regenerate the vectors only when a number or formula changes on purpose: `UPDATE
 
 ## 5. Manual testing on iOS
 
-1. Rule 1: take the device lock, shut the Android emulator down (`adb emu kill`), boot the simulator.
+1. Rule 1: shut the Android emulator down (`adb emu kill`), boot the simulator.
 2. Install a **release** build (section 3).
 3. Walk through the cases in [TEST_CHECKLIST.md](TEST_CHECKLIST.md).
 4. Screenshots: `xcrun simctl io booted screenshot file.png`. Taps and swipes: the simulator tooling of your IDE, or `xcrun simctl` helpers; the iPhone 17 screen is 402 x 874 points.
@@ -130,7 +123,7 @@ Regenerate the vectors only when a number or formula changes on purpose: `UPDATE
 
 ## 6. Manual testing on Android
 
-1. Rule 1: take the device lock, shut the iOS simulator down (`xcrun simctl shutdown all`), start the emulator (`bash scripts/app/startAndroidEmulator.sh` is headless; for a window: `emulator -avd MW_Pixel9_API_37 -gpu host`).
+1. Rule 1: shut the iOS simulator down (`xcrun simctl shutdown all`), start the emulator (`bash scripts/app/startAndroidEmulator.sh` is headless; for a window: `emulator -avd MW_Pixel9_API_37 -gpu host`).
 2. Install a **release** build (section 3).
 3. Walk through the same cases as on iOS. Scripts can tap by `testID`:
 

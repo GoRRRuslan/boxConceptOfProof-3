@@ -22,6 +22,7 @@
     "cleanNode": "rm -rf node_modules && yarn cache clean",
     "doctor": "npx expo-doctor",
     "iosRunIPhone17": "expo run:ios --device \"iPhone 17\"",
+    "androidEmulatorStart": "bash scripts/app/startAndroidEmulator.sh",
     "iosNativeTest": "bash scripts/native/iosTests.sh",
     "androidNativeTest": "cd android && ./gradlew :mystery-scene:testDebugUnitTest",
     "sceneVectorsUpdate": "UPDATE_SCENE_VECTORS=1 jest sceneVectors",

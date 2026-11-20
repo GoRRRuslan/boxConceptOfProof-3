@@ -7,7 +7,7 @@
 | Test by hand / run the automated and native tests / measure FPS (the golden rules) | [TESTING.md](TESTING.md) |
 | See what was checked, the result per platform, bugs found | [TEST_CHECKLIST.md](TEST_CHECKLIST.md) |
 | Numbers: FPS, startup timeline, method, limits | [PERFORMANCE.md](PERFORMANCE.md) |
-| See every animation, screenshots of every step, what differs from repo 1 | [ANIMATIONS.md](ANIMATIONS.md) |
+| See every animation, screenshots of every step, how the two platforms differ | [ANIMATIONS.md](ANIMATIONS.md) |
 | The assignment and the 3D model | [ASSIGNMENT.md](ASSIGNMENT.md), [MODEL.md](MODEL.md) |
 | Project conventions | [../CLAUDE.md](../CLAUDE.md) |
 

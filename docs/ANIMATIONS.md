@@ -182,7 +182,7 @@ What happens, in order:
 
 ## 7. Light, shadow and shine
 
-The same rig on both platforms (numbers mirrored from the first version; the engines express them in different units):
+The same rig on both platforms (the engines express the numbers in different units):
 
 - **Three lights plus reflections.** A warm key light from the upper left (casts shadows), a cool rim light from behind that outlines the box against the dark background, and a soft fill from below. An environment gives glossy and metallic boxes something to reflect (a Filament KTX image on Android, a generated studio image on iOS).
 - **Shadows.** The lid shades the inside of the box and the box shades its own lower edge.
@@ -254,12 +254,12 @@ Every sound is synthesised by a script (`yarn assetsSounds`, `scripts/assets/gen
 
 More screenshots: pinch zoom ([iOS](media/ios-14-pinch-zoom.png)), double-tap reset ([iOS](media/ios-15-double-tap-reset.png)), swipe-up open ([iOS](media/ios-16-swipe-up-opening.png), [Android](media/android-16-swipe-up-opening.png)), Epic ([iOS](media/ios-19-reveal-epic.png)), Rare ([Android](media/android-17-reveal-purchase2.png)), Legendary ([Android](media/android-18-reveal-purchase5-classic.png)), failure ([Android](media/android-22-failure-server-error.png)). Legendary on iOS: [reveal](media/ios-20-reveal-legendary.png), [box put away](media/ios-21-legendary-put-away.png). Press squeeze: [iOS](media/ios-04-press-squeeze.png). They are listed in [TEST_CHECKLIST.md](TEST_CHECKLIST.md) as not re-run.
 
-## What differs from the first version (react-native-filament)
+## Platform differences
 
-- **Engines:** SceneKit on iOS (the first version used Filament on both). Lights, shadows, ambient occlusion and bloom are SceneKit's equivalents, tuned by eye, so the iOS look differs a little: a different tone curve, softer highlights, a generated studio environment instead of Filament's KTX.
-- **Light from inside the box:** visible on both platforms in the prize colour (iOS emission intensity 1.6, Android the emissive factor), roughly like the first version.
-- **Android and iOS look different in detail** (engines): Android has all effects including shadows (Filament on Vulkan); iOS uses SceneKit equivalents.
-- **Box size and position are identical** to the first version (measured on the final screenshots: 493 px wide in both).
+- **Engines:** SceneKit on iOS, Filament on Android. Lights, shadows, ambient occlusion and bloom are SceneKit's equivalents on iOS, tuned by eye, so the iOS look differs a little: a different tone curve, softer highlights, a generated studio environment instead of Filament's KTX image.
+- **Light from inside the box:** visible on both platforms in the prize colour (iOS emission intensity 1.6, Android the emissive factor).
+- **Android has all effects**, including shadows, on Filament's Vulkan backend; iOS uses the SceneKit equivalents.
+- **Box size and position are identical** on both platforms (493 px wide on the final screenshots).
 - **Background:** transparent over the app background on both platforms.
-- **Behaviour is otherwise the same:** same numbers, same state machine (proved by the shared vectors), but timers (sounds, reveal) stay in JavaScript.
-- **Startup:** the first frames on Android compile Filament materials (about 1 s of slow frames, see PERFORMANCE.md).
+- **Behaviour is otherwise the same:** same numbers and state machine (proved by the shared test vectors, see [NATIVE_SCENE.md](NATIVE_SCENE.md)), but timers (sounds, reveal) stay in JavaScript.
+- **Startup:** the first frames on Android compile Filament materials (see PERFORMANCE.md, section 2).

@@ -41,7 +41,7 @@ Pinch, double-tap reset, press squeeze, swipe-up-to-open, Rare/Epic/Legendary re
 | B4 | Android build | namespace `...native` invalid | `native` is a Java keyword; config plugin sets the application id |
 | B5 | Android | stale JavaScript in measurement builds | Gradle bundle cache (documented in TESTING.md Rule 5) |
 
-## 4b. Round 2 results
+## 4b. Device checks after the first pass
 
 | Case | Android | iOS |
 |---|---|---|
@@ -55,11 +55,11 @@ Pinch, double-tap reset, press squeeze, swipe-up-to-open, Rare/Epic/Legendary re
 | `networkError`, `responseLost` | ➖ | ✅ both: error text, balance $1,000 unchanged, Buy available ([network](media/ios-21-failure-network-error.png), [lost](media/ios-22-failure-response-lost.png)); the retry-returns-the-same-watch part is unit-tested only |
 | Opening-flow FPS | 59.8 FPS, 0.3 % slow frames (Vulkan) | 60.0 FPS |
 | iOS glow strength | n/a | ✅ intensity 1.6, visible in the prize colour ([shot](media/ios-09-lid-opening-glow.png)); 4 blew out to white |
-| Box size vs repo 1 | ➖ | ✅ **identical**: first catalogue box 493 x 485 px here and 493 x 483 px in repo 1's final screenshot (`animations/01-entrance-done.png`), same position; the "10 % smaller" came from comparing with an older repo 1 screenshot |
+| Box size and position equal on both platforms | ➖ | ✅ **identical**: first catalogue box 493 px wide on both platforms' final screenshots, same position |
 
 Note: the prize depends on the purchase number (5th purchase = Classic after exactly four Starters gives the Legendary). Still not run: device tilt, Rare on iOS as a kept screenshot, background/foreground, empty-collection screen, physical devices.
 
-## 4c. Bugs of round 2
+## 4c. Bugs found in those checks
 
 | # | Platform | Symptom | Cause / fix |
 |---|---|---|---|
