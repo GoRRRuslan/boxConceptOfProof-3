@@ -1,0 +1,12 @@
+run 1
+startup modelLoaded at 1261 ms since process start
+startup cardsReceived at 1997 ms since process start
+startup firstFrameWithBoxes at 2003 ms since process start
+run 2
+startup modelLoaded at 147 ms since process start
+startup cardsReceived at 859 ms since process start
+startup firstFrameWithBoxes at 865 ms since process start
+run 3
+startup modelLoaded at 157 ms since process start
+startup cardsReceived at 892 ms since process start
+startup firstFrameWithBoxes at 898 ms since process start
