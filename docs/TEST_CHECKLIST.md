@@ -41,6 +41,14 @@ Pinch, double-tap reset, press squeeze, swipe-up-to-open, Rare/Epic/Legendary re
 | B4 | Android build | namespace `...native` invalid | `native` is a Java keyword; config plugin sets the application id |
 | B5 | Android | stale JavaScript in measurement builds | Gradle bundle cache (documented in TESTING.md Rule 5) |
 
+## 4b. Open bug (second round)
+
+| # | Platform | Symptom | Status |
+|---|---|---|---|
+| B6 | Android | List shows, **3D boxes appear only ~10-14 s after launch** (Filament material compile on the emulator); reproduced on every cold launch | **open**, see PERFORMANCE.md 2b |
+
+Not done in the second round: pinch / press squeeze / swipe-up on device, Rare/Epic/Legendary screenshots on final builds (the Android purchase script was blocked by the empty list), failure injection on a device, iOS opening-flow FPS. iOS glow was strengthened (emission intensity 4) but not re-checked by screenshot.
+
 ## 5. Performance
 
 See [PERFORMANCE.md](PERFORMANCE.md): catalogue scroll iOS 60.0, Android 59.5 overall (60.0 after a 3 s warm-up).

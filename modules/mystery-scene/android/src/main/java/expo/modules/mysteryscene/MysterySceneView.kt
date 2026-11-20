@@ -182,8 +182,12 @@ class MysterySceneView(context: Context, appContext: AppContext) : ExpoView(cont
     if (Looper.myLooper() == Looper.getMainLooper()) startRenderLoop() else mainHandler.post { startRenderLoop() }
   }
 
+  private var keepRenderingUntilMilliseconds = 0.0
+
   private fun startRenderLoop() {
     idleFrames = 0
+    // A TextureView may take a moment to show what was drawn (first layout, surface just created): rest only after that.
+    keepRenderingUntilMilliseconds = SceneHost.nowMilliseconds() + KEEP_RENDERING_MILLISECONDS
     if (isLoopRunning) return
     isLoopRunning = true
     lastFrameTimeNanos = 0L
@@ -203,15 +207,19 @@ class MysterySceneView(context: Context, appContext: AppContext) : ExpoView(cont
     val result = SceneHost.computeFrame(nowMilliseconds, deltaSeconds) ?: return
     scene.apply(result.frame)
 
+    var didRender = false
     if (chain != null && uiHelper.isReadyToRender && scene.renderer.beginFrame(chain, frameTimeNanos)) {
       scene.renderer.render(scene.view)
       scene.renderer.endFrame()
+      didRender = true
     }
 
     if (result.frame.cards.any { it.isVisible && it.scale > 0.01 }) StartupTrace.mark("firstFrameWithBoxes")
     if (hadPreviousFrame) record(deltaMilliseconds, nowMilliseconds)
 
-    if (result.needsMoreFrames) {
+    // The loop may only rest after frames have really been drawn: a frame skipped because the surface is not ready (or Filament
+    // dropped it) must not count as "idle", or the boxes would never reach the screen.
+    if (result.needsMoreFrames || !didRender || nowMilliseconds < keepRenderingUntilMilliseconds) {
       idleFrames = 0
     } else {
       idleFrames += 1
@@ -243,5 +251,9 @@ class MysterySceneView(context: Context, appContext: AppContext) : ExpoView(cont
   override fun onAttachedToWindow() {
     super.onAttachedToWindow()
     wakeRenderLoop()
+  }
+
+  private companion object {
+    const val KEEP_RENDERING_MILLISECONDS = 15000.0
   }
 }
