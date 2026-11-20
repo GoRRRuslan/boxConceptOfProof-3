@@ -105,7 +105,7 @@ The facade passes the scroll view's React tag (`FlashList.getScrollableNode()`) 
 | Model | own GLB reader (`GlbLoader.swift`) builds `SCNGeometry` + PBR `SCNMaterial` | gltfio `AssetLoader` (instanced asset) |
 | View | `SCNView` | `TextureView` (keeps alpha / fade animations of the screen working) |
 | Loop | `SCNSceneRendererDelegate.updateAtTime`, `isPlaying` toggled | `Choreographer` frame callback, posted only while needed |
-| Post effects | HDR + bloom, SSAO, 4x MSAA, deferred shadows | FXAA, bloom, SSAO, shadows (same settings as the previous version) |
+| Post effects | HDR + bloom, SSAO, 4x MSAA, deferred shadows | FXAA, bloom, SSAO, shadows |
 
 Why these:
 
@@ -123,7 +123,7 @@ The GPU rests when nothing moves (battery). The `SceneController` answers `needs
 
 ## 7. Parity with the TypeScript reference
 
-`src/services/sceneReference/computeSceneFrame.ts` reproduces, in TypeScript, what the old render callback computed for every frame (using the original `_facadesLogic` functions). A Jest test runs three long scenarios (entrance and scroll; press squeeze; select, auto-turn, drag, flick, pinch, reset, tilt, open, glow, tuck, close, select again) and writes/compares `test-vectors/sceneVectors.json`: every 4th frame of every scenario with all poses, lid angle and hinge transform, glow. The XCTest suite and the JUnit suite replay the same commands through the native `SceneController` and compare every number to 1e-9. Result: both pass (see [TESTING.md](TESTING.md)).
+`src/services/sceneReference/computeSceneFrame.ts` reproduces, in TypeScript, what the native render loop computes for every frame (using the original `_facadesLogic` functions). A Jest test runs three long scenarios (entrance and scroll; press squeeze; select, auto-turn, drag, flick, pinch, reset, tilt, open, glow, tuck, close, select again) and writes/compares `test-vectors/sceneVectors.json`: every 4th frame of every scenario with all poses, lid angle and hinge transform, glow. The XCTest suite and the JUnit suite replay the same commands through the native `SceneController` and compare every number to 1e-9. Result: both pass (see [TESTING.md](TESTING.md)).
 
 What this proves: the native ports compute the same box poses, lid angles and glow as the TypeScript. What it does not prove: that the engine draws them the same way, which is a visual check (screenshots in [ANIMATIONS.md](ANIMATIONS.md)).
 

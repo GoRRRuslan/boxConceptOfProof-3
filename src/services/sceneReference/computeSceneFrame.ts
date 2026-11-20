@@ -170,7 +170,7 @@ export class SceneReference {
     }
   }
 
-  // The body of the old render callback, one frame.
+  // The body of the render loop, one frame.
   public computeFrame(now: number, rawDeltaSeconds: number): ISceneFrame {
     const deltaSeconds = Math.min(rawDeltaSeconds, MAXIMUM_FRAME_SECONDS)
     const { scene } = this
