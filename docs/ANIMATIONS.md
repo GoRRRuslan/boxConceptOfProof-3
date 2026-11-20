@@ -252,12 +252,13 @@ Every sound is synthesised by a script (`yarn assetsSounds`, `scripts/assets/gen
 | Collection | ![](media/ios-12-collection.png) | ![](media/android-13-collection.png) |
 | Detail sheet | ![](media/ios-13-collection-detail.png) | ![](media/android-14-collection-detail.png) |
 
-Not captured: pinch, press squeeze mid-flight, Rare / Epic / Legendary reveals on the final builds (an Epic reveal on iOS and a Rare reveal on Android were seen in the flow checks, but not kept as final screenshots), the swipe-up open. They are listed in [TEST_CHECKLIST.md](TEST_CHECKLIST.md) as not re-run.
+More screenshots: pinch zoom ([iOS](media/ios-14-pinch-zoom.png)), double-tap reset ([iOS](media/ios-15-double-tap-reset.png)), swipe-up open ([iOS](media/ios-16-swipe-up-opening.png), [Android](media/android-16-swipe-up-opening.png)), Epic ([iOS](media/ios-19-reveal-epic.png)), Rare ([Android](media/android-17-reveal-purchase2.png)), Legendary ([Android](media/android-18-reveal-purchase5-classic.png)), failure ([Android](media/android-22-failure-server-error.png)). Not captured: press squeeze mid-flight, Legendary on iOS. They are listed in [TEST_CHECKLIST.md](TEST_CHECKLIST.md) as not re-run.
 
 ## What differs from the first version (react-native-filament)
 
 - **Engines:** SceneKit on iOS (the first version used Filament on both). Lights, shadows, ambient occlusion and bloom are SceneKit's equivalents, tuned by eye, so the iOS look differs a little: a different tone curve, softer highlights, a generated studio environment instead of Filament's KTX.
-- **Light from inside the box** is weaker on iOS than in the first version (SceneKit emission is not tuned up yet; Common's grey glow is hardly visible). Android shows a faint glow.
+- **Light from inside the box:** visible on both platforms in the prize colour (iOS emission intensity 1.6, Android the emissive factor), roughly like the first version.
+- **Android has no shadows and its post effects (FXAA, dithering, ambient occlusion, bloom) start 2.5 s after the first box appears**, because compiling them delayed the first picture by 10+ s on the emulator. iOS has all of them from the start.
 - **Box size:** the iOS boxes are about 10 % smaller in their slots than in the first version (SceneKit's field-of-view mapping); layout is identical otherwise.
 - **Background:** transparent over the app background on both platforms.
 - **Behaviour is otherwise the same:** same numbers, same state machine (proved by the shared vectors), but timers (sounds, reveal) stay in JavaScript.

@@ -41,13 +41,31 @@ Pinch, double-tap reset, press squeeze, swipe-up-to-open, Rare/Epic/Legendary re
 | B4 | Android build | namespace `...native` invalid | `native` is a Java keyword; config plugin sets the application id |
 | B5 | Android | stale JavaScript in measurement builds | Gradle bundle cache (documented in TESTING.md Rule 5) |
 
-## 4b. Open bug (second round)
+## 4b. Round 2 results
 
-| # | Platform | Symptom | Status |
+| Case | Android | iOS |
+|---|---|---|
+| Boxes visible after launch | ✅ after the fix (progressive quality); before: ~10-14 s late (bug B6) | ✅ |
+| Pinch zoom | ➖ (adb cannot send two fingers) | ✅ zoom to the 2x limit ([shot](media/ios-14-pinch-zoom.png)) |
+| Double-tap reset | ➖ | ✅ ([shot](media/ios-15-double-tap-reset.png)) |
+| Press squeeze | ⚠️ long press taken, effect not visible in the picture | ⚠️ same |
+| Swipe up opens a bought box | ✅ ([shot](media/android-16-swipe-up-opening.png)) | ✅ ([shot](media/ios-16-swipe-up-opening.png)) |
+| Reveal Common / Rare / Epic / Legendary | Common ✅, Rare ✅ (purchase 2), Legendary ✅ (5th purchase: 4 Starter + Classic, balance $650 = exactly-once) | Common ✅, Epic ✅ ([shot](media/ios-19-reveal-epic.png)), Rare ⚠️ shot taken during the flow (`ios-18-reveal-rare.png`), Legendary ➖ |
+| Failure injection `serverError` | ✅ error text, balance unchanged $1,000, Buy available again ([shot](media/android-22-failure-server-error.png)) | ➖ (same TypeScript; unit tests) |
+| `networkError`, `responseLost` | ➖ unit tests only | ➖ |
+| Opening-flow FPS | 58.5 FPS, 1.7 % slow frames | 60.0 FPS |
+| iOS glow strength | n/a | ✅ intensity 1.6, visible in the prize colour ([shot](media/ios-09-lid-opening-glow.png)); 4 blew out to white |
+| Box size vs repo 1 (~10 % smaller) | ➖ not fixed (no comparable final-state screenshot of repo 1) | ➖ not fixed |
+
+Still not run: device tilt, background/foreground, empty-collection screen, physical devices, Android shadows (removed, see PERFORMANCE.md 2b).
+
+## 4c. Bugs of round 2
+
+| # | Platform | Symptom | Cause / fix |
 |---|---|---|---|
-| B6 | Android | List shows, **3D boxes appear only ~10-14 s after launch** (Filament material compile on the emulator); reproduced on every cold launch | **open**, see PERFORMANCE.md 2b |
-
-Not done in the second round: pinch / press squeeze / swipe-up on device, Rare/Epic/Legendary screenshots on final builds (the Android purchase script was blocked by the empty list), failure injection on a device, iOS opening-flow FPS. iOS glow was strengthened (emission intensity 4) but not re-checked by screenshot.
+| B6 | Android | Boxes only ~10-14 s after launch (empty list) | Filament shader compilation on the emulator; progressive quality, shadows removed |
+| B7 | Android | `uiautomator dump` fails while the reveal animates (testID taps "not found") | test tooling; scripts use coordinates for Buy/Open/Done |
+| B8 | iOS | Glow white at intensity 4, weak at 1 | set to 1.6 |
 
 ## 5. Performance
 
