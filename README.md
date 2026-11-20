@@ -57,6 +57,8 @@ The TypeScript side follows the conventions of an enterprise React Native app: f
 - 🧪 Jest + React Native Testing Library, **XCTest (Swift) and JUnit (Kotlin) parity tests** against a TypeScript reference, ESLint 9 + Prettier, `ciPipeline`
 - 🧩 An **Expo module** (`modules/mystery-scene`), autolinked, with a typed JavaScript API
 - 🌟 A **show around the box**: breathing and flashing seams, a soft light curtain from the open box to the watch, shock waves, sparks, camera punch, lid settle, hold-to-open — bigger for rarer prizes ([docs/EFFECTS.md](docs/EFFECTS.md))
+- 🎨 **One shared colour grade** (more saturation and contrast) applied to the boxes, identical in all three repositories, so the boxes look equally rich everywhere
+- 🧭 A [rendering report](docs/RENDERING_REPORT.md) that compares the three ways of drawing the scene (Filament, three.js on WebGPU, an own native module): FPS, pros and cons
 - ✨ A full set of animations (push-in, anticipation, rarity reveal, gestures, sound) described with screenshots for both platforms in [docs/ANIMATIONS.md](docs/ANIMATIONS.md)
 - 📊 Reproducible performance tooling and an honest [performance report](docs/PERFORMANCE.md)
 
@@ -393,8 +395,8 @@ Everything else — API, data flow, scroll sync, engines and why, render on dema
 
 ```bash
 yarn ciPipeline                                             # eslint . && tsc --noEmit  → must be clean
-yarn test                                                   # jest → 233 tests, 40 suites
-cd modules/mystery-scene/ios/SceneCore && swift test        # XCTest, 5 tests, runs on the Mac
+yarn test                                                   # jest → 251 tests, 42 suites
+cd modules/mystery-scene/ios/SceneCore && swift test        # XCTest, 6 tests, runs on the Mac
 cd android && ./gradlew :mystery-scene:testDebugUnitTest    # JUnit, 5 tests
 yarn doctor                                                 # expo-doctor
 ```
@@ -403,7 +405,7 @@ yarn doctor                                                 # expo-doctor
 |---|---|
 | ESLint (strict-type-checked, stylistic, react-native, react-hooks) | ✅ clean |
 | TypeScript 6 strict | ✅ clean |
-| Jest + RNTL | ✅ 233 / 233 (includes the scene vector generator check) |
+| Jest + RNTL | ✅ 251 / 251 (includes the scene vector generator check) |
 | Swift `SceneCore` (XCTest) | ✅ 5 / 5 — parity with the TypeScript reference (3 scenarios, 1e-9) + behaviour tests |
 | Kotlin scene core (JUnit) | ✅ 5 / 5 — same checks |
 | Full flow on iOS 27 and Android 37, including the animations | ✅ (see [checklist](docs/TEST_CHECKLIST.md)) |
