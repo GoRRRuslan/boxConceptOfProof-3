@@ -16,7 +16,6 @@ Start here. Each row says what a document is for, so you can open the right one 
 | **Test the app (rules, iOS, Android, native tests, FPS)** | **[TESTING.md](TESTING.md)** |
 | See what was tested and the result, plus bugs found | [TEST_CHECKLIST.md](TEST_CHECKLIST.md) |
 | See FPS numbers, startup timeline, method and limits | [PERFORMANCE.md](PERFORMANCE.md) |
-| [RENDERING_REPORT.md](RENDERING_REPORT.md) | The three renderers compared; why expo-gl is out |
 | **See how the three repositories render and compare (Metal vs OpenGL ES, why expo-gl was dropped)** | **[RENDERING_REPORT.md](RENDERING_REPORT.md)** |
 | Project conventions | [../CLAUDE.md](../CLAUDE.md) |
 
@@ -35,6 +34,7 @@ Start here. Each row says what a document is for, so you can open the right one 
 | [TESTING.md](TESTING.md) | Testing guide and the golden rules |
 | [TEST_CHECKLIST.md](TEST_CHECKLIST.md) | Cases, results per platform, bugs found, gaps |
 | [PERFORMANCE.md](PERFORMANCE.md) | FPS report: numbers, startup, Android backend, method, limits |
+| [RENDERING_REPORT.md](RENDERING_REPORT.md) | The three renderers compared; why expo-gl is out |
 | [MODEL.md](MODEL.md) | The 3D box model: parts, pivots, materials |
 | `data/` | Raw measurement logs and startup traces |
 | `media/` | Screenshots of both platforms |
