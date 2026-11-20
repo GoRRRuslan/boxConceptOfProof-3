@@ -58,9 +58,6 @@ final class BoxScene {
     camera.zFar = 30
     camera.wantsHDR = true
     camera.wantsExposureAdaptation = false
-    // A touch of colour grading: slightly more contrast and saturation.
-    camera.contrast = 0.05
-    camera.saturation = 1.08
     camera.exposureOffset = 0
     camera.bloomIntensity = 0.5
     camera.bloomThreshold = 0.8

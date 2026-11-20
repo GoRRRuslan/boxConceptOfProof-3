@@ -2,7 +2,6 @@ package expo.modules.mysteryscene
 
 import android.content.Context
 import com.google.android.filament.Camera
-import com.google.android.filament.ColorGrading
 import com.google.android.filament.Colors
 import com.google.android.filament.Engine
 import com.google.android.filament.EntityManager
@@ -84,7 +83,6 @@ class FilamentBoxScene(private val context: Context) {
   // The look of every box and the last iridescence tint written to its body (the glossy boxes shimmer).
   private var cardLooks: List<BoxLook> = emptyList()
   private val appliedIridescence = HashMap<Int, List<Double>>()
-  private var colorGrading: ColorGrading? = null
 
   // The show around the boxes: pools of flat soft shapes (a disc, a ring, a curtain of light) that face the camera. The scene
   // controller computes where each one is (EffectsLayout); this class only places and tints them. Nothing is created per frame.
@@ -98,6 +96,11 @@ class FilamentBoxScene(private val context: Context) {
   private var appliedSparkTintLevel = -2.0
   private var appliedShaftTintLevel = -2.0
   private var appliedRingTintLevel = -2.0
+
+  // For this long after the first frame every hidden effect object is drawn once, tiny, in the middle of the view: its material is
+  // compiled during the entrance and not as a hitch of about 50 ms when the lid is let go.
+  private var warmUpStartedAt = -1.0
+  private var isWarmingUp = false
 
   private enum class PartName(val value: String) {
     BASE("Shell_Base"), LID("Shell_Lid"), WORDMARK("Shell_Wordmark"), CUSHION("Shell_Fitted_Cushion"), SEAM("Shell_Seam")
@@ -119,9 +122,6 @@ class FilamentBoxScene(private val context: Context) {
     view.antiAliasing = View.AntiAliasing.NONE
     view.dithering = View.Dithering.NONE
     view.isPostProcessingEnabled = true
-    // A touch of colour grading: slightly more contrast and saturation.
-    colorGrading = ColorGrading.Builder().contrast(1.05f).saturation(1.08f).build(engine)
-    view.colorGrading = colorGrading
     view.ambientOcclusionOptions = View.AmbientOcclusionOptions().apply {
       enabled = false
       radius = 0.35f
@@ -410,7 +410,7 @@ class FilamentBoxScene(private val context: Context) {
     val scaleY = if (isHidden) HIDDEN_EFFECT_SCALE else item.scaleY
     val effectMatrix = floatArrayOf(
       scaleX.toFloat(), 0f, 0f, 0f, 0f, scaleY.toFloat(), 0f, 0f, 0f, 0f, 1f, 0f,
-      item.x.toFloat(), if (isHidden) PARKED_EFFECT_HEIGHT else item.y.toFloat(), item.z.toFloat(), 1f,
+      item.x.toFloat(), if (isHidden) (if (isWarmingUp) 0f else PARKED_EFFECT_HEIGHT) else item.y.toFloat(), item.z.toFloat(), 1f,
     )
     transforms.setTransform(transforms.getInstance(root), effectMatrix)
   }
@@ -421,6 +421,8 @@ class FilamentBoxScene(private val context: Context) {
   }
 
   private fun applyEffects(frame: SceneFrame) {
+    if (warmUpStartedAt < 0) warmUpStartedAt = frame.nowMilliseconds
+    isWarmingUp = frame.nowMilliseconds - warmUpStartedAt < WARM_UP_MILLISECONDS
     val layout = frame.effects
     val glow = frame.glowColorLinear
     val boost = frame.emissiveBoost
@@ -524,7 +526,6 @@ class FilamentBoxScene(private val context: Context) {
     }
     indirectLight?.let { engine.destroyIndirectLight(it) }
     skybox?.let { engine.destroySkybox(it) }
-    colorGrading?.let { engine.destroyColorGrading(it) }
     engine.destroyView(view)
     engine.destroyScene(scene)
     engine.destroyCameraComponent(cameraEntity)
@@ -536,6 +537,7 @@ class FilamentBoxScene(private val context: Context) {
   companion object {
     private const val ENVIRONMENT_LIGHT_INTENSITY = 22_000f
     private const val HIDDEN_EFFECT_SCALE = 0.0001
+    private const val WARM_UP_MILLISECONDS = 3500.0
     private const val PARKED_EFFECT_HEIGHT = -1000f
 
     // The app background #0B0D12 as linear RGB.

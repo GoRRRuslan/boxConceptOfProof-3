@@ -62,3 +62,18 @@ With the emulator window open (not headless), on a settled emulator, release bui
 Post effects are FXAA, ambient occlusion and bloom at LOW quality; MSAA is off on Android.
 
 How to measure: let a freshly booted emulator settle for about a minute first (right after boot it reads lower), and use the in-app auto-scroll. Do not sample presented FPS while sending `adb shell input swipe` gestures: the gestures leave idle gaps and the reading drops to about 32 FPS even for apps that hold 60.
+
+## The show around the box: FPS with every effect on
+
+Measured with the finished app and everything in [EFFECTS.md](EFFECTS.md) switched on, release builds, one platform at a time, with the in-app meter (`EXPO_PUBLIC_SHOW_PERFORMANCE=1`). Android: [`scripts/perf/measureAndroidFlow.sh`](../scripts/perf/measureAndroidFlow.sh) (16 s warm-up, 35 s of list flings, then select, turn, buy, open, reveal, Done). iOS: the list scrolls by itself (`EXPO_PUBLIC_AUTO_SCROLL=1`), the opening is driven by taps; the meter posts to a local collector (`EXPO_PUBLIC_PERF_SINK_URL`).
+
+| Platform | Scenario | Result |
+|---|---|---|
+| Android Emulator (headless), release | Catalogue, 35 s of list flings | 60.0 FPS, 32 of 32 windows at 60, 0 slow frames, worst frame 16.7 ms |
+| Android Emulator (headless), release | Opening flow (select, turn, buy, open, reveal) | 59.5 FPS, 15 of 18 windows at 59 or more (lowest 57.0), 6 slow frames, worst frame 50 ms |
+| iOS Simulator (iPhone 17), release | Catalogue, 60 s auto-scroll | 60.0 FPS, 37 of 37 windows at 60, 0 slow frames, worst frame 17.8 ms |
+| iOS Simulator (iPhone 17), release | Opening flow | 60.0 FPS, 16 of 16 windows at 60, 0 slow frames, worst frame 18.2 ms |
+
+What it took to get here: effect objects are drawn once, tiny, in the first 3.5 s so their materials and pipelines are compiled during the entrance.
+
+The few slow frames left on Android are single frames (33-50 ms) at the moments when React mounts or unmounts a screen (selecting a box, the reveal, Done): the frame loop shares the main thread with the mount.

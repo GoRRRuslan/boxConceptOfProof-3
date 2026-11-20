@@ -16,6 +16,11 @@ final class EffectNodes {
 
   private static let renderingOrder = 10
   private static let hiddenScale = 0.0001
+  // For this long after the first frame every hidden effect object is drawn once, tiny, in the middle of the view: its pipeline is
+  // compiled during the entrance and not as a hitch when the lid is let go.
+  private static let warmUpMilliseconds = 3500.0
+  private var warmUpStartedAt = -1.0
+  private var isWarmingUp = false
 
   init() {
     root.name = "Effects"
@@ -84,6 +89,13 @@ final class EffectNodes {
 
   private func place(_ node: SCNNode, _ item: EffectItem, alpha: Double) {
     let isHidden = item.scaleX <= Self.hiddenScale || alpha <= 0.001
+    if isHidden && isWarmingUp {
+      node.isHidden = false
+      node.simdPosition = SIMD3<Float>(0, 0, 0)
+      node.simdScale = SIMD3<Float>(Float(Self.hiddenScale), Float(Self.hiddenScale), 1)
+      node.geometry?.firstMaterial?.transparency = 0.01
+      return
+    }
     node.isHidden = isHidden
     guard !isHidden else { return }
     node.simdPosition = SIMD3<Float>(Float(item.x), Float(item.y), Float(item.z))
@@ -97,6 +109,8 @@ final class EffectNodes {
   }
 
   func apply(_ frame: SceneFrame) {
+    if warmUpStartedAt < 0 { warmUpStartedAt = frame.nowMilliseconds }
+    isWarmingUp = frame.nowMilliseconds - warmUpStartedAt < Self.warmUpMilliseconds
     let layout = frame.effects
     let glow = frame.glowColorLinear
     let boost = frame.emissiveBoost

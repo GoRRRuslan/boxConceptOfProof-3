@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import { getBoxFinish } from '@flows/catalogueFlow/_facadesLogic/getBoxFinish'
 import { convertHexToLinearColor } from '@flows/catalogueFlow/_facadesLogic/convertHexToLinearColor'
+import { gradeLinearColor } from '@flows/catalogueFlow/_facadesLogic/gradeLinearColor'
 import type { ICatalogueCard } from '@flows/catalogueFlow/_types'
 import type { IGetBoxesResponse } from '@networking/api/MysteryBoxApi/_types'
 import { formatCurrency } from '@utils/formatCurrency'
@@ -40,7 +41,7 @@ export const useAdapterCatalogueCards = ({ boxesData, balanceInCents }: IUseAdap
         prizeText: t('catalogue.prizeUpTo', { amount: formatCurrency(Math.max(...prizeValuesInCents)) }),
         affordabilityText: isAffordable ? null : t('catalogue.notEnoughBalance'),
         isAffordable,
-        colorLinearRgba: convertHexToLinearColor(box.colorHex),
+        colorLinearRgba: gradeLinearColor(convertHexToLinearColor(box.colorHex)),
         finish: getBoxFinish(box.priceInCents),
       }
     })
