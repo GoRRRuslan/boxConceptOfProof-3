@@ -79,6 +79,15 @@ object EffectsConfig {
   const val SWAY_RADIANS_PER_PIXEL_PER_SECOND = 0.00035
   const val SWAY_MAXIMUM_RADIANS = 0.25
   const val SWAY_RESPONSE_PER_SECOND = 10.0
+  // The scroll speed is estimated from the scroll EVENTS (they reach the scene irregularly, not once per frame) and smoothed.
+  const val SWAY_VELOCITY_SMOOTHING_PER_EVENT = 0.3
+  const val SWAY_VELOCITY_FADE_PER_SECOND = 12.0
+  const val SWAY_VELOCITY_SILENCE_SECONDS = 0.1
+  const val SWAY_VELOCITY_MAXIMUM_EVENT_GAP_SECONDS = 0.25
+  // Between two scroll events the boxes keep moving at the last speed for at most this long.
+  const val SCROLL_EXTRAPOLATION_MAXIMUM_SECONDS = 0.05
+  // The turn of a box with its place on the screen (the parallax) follows the offset with this time constant.
+  const val PARALLAX_OFFSET_SMOOTHING_SECONDS = 0.07
 
   class RarityProfile(
     val burstCount: Int,
@@ -243,6 +252,40 @@ fun transformModelPoint(x: Double, y: Double, z: Double, centerHeight: Double, p
   val yawSin = sin(pose.yawRadians)
   return Triple(scaledX * yawCos + pitchedZ * yawSin, pitchedY + pose.translateY, -scaledX * yawSin + pitchedZ * yawCos + pose.translateZ)
 }
+
+/** [last offset, time it last changed, smoothed speed] of the scroll, see stepScrollVelocity. */
+data class ScrollVelocityState(val offset: Double, val changedAtMilliseconds: Double, val velocity: Double)
+
+/**
+ * The scroll speed (pixels per second) from the scroll offset the scene is given. The offset changes only when a scroll event
+ * arrives, which is irregular: the speed is measured between CHANGES of the offset, smoothed over events, and fades out when no event arrives.
+ */
+fun stepScrollVelocity(previous: ScrollVelocityState, currentOffset: Double, nowMilliseconds: Double, deltaSeconds: Double): ScrollVelocityState {
+  if (currentOffset != previous.offset) {
+    val gapSeconds = (nowMilliseconds - previous.changedAtMilliseconds) / 1000
+    val instantVelocity =
+      if (gapSeconds > 0 && gapSeconds < EffectsConfig.SWAY_VELOCITY_MAXIMUM_EVENT_GAP_SECONDS) (currentOffset - previous.offset) / gapSeconds else 0.0
+    return ScrollVelocityState(
+      currentOffset, nowMilliseconds,
+      previous.velocity + (instantVelocity - previous.velocity) * EffectsConfig.SWAY_VELOCITY_SMOOTHING_PER_EVENT,
+    )
+  }
+  val isOverdue = (nowMilliseconds - previous.changedAtMilliseconds) / 1000 > EffectsConfig.SWAY_VELOCITY_SILENCE_SECONDS
+  return ScrollVelocityState(
+    previous.offset, previous.changedAtMilliseconds,
+    if (isOverdue) previous.velocity * exp(-EffectsConfig.SWAY_VELOCITY_FADE_PER_SECOND * deltaSeconds) else previous.velocity,
+  )
+}
+
+/** Where the list is NOW: the offset carried on at the smoothed speed between two events, for a few frames at most. */
+fun extrapolateScrollOffset(offset: Double, velocityPixelsPerSecond: Double, lastChangeMilliseconds: Double, nowMilliseconds: Double): Double {
+  val secondsSinceChange = max(0.0, min(EffectsConfig.SCROLL_EXTRAPOLATION_MAXIMUM_SECONDS, (nowMilliseconds - lastChangeMilliseconds) / 1000))
+  return offset + velocityPixelsPerSecond * secondsSinceChange
+}
+
+/** The offset the parallax turn of the boxes is computed from: an exponential follower of the real offset. */
+fun stepParallaxOffset(previousOffset: Double, targetOffset: Double, deltaSeconds: Double): Double =
+  previousOffset + (targetOffset - previousOffset) * (1 - exp(-deltaSeconds / EffectsConfig.PARALLAX_OFFSET_SMOOTHING_SECONDS))
 
 fun stepScrollSway(previousSway: Double, scrollVelocityPixelsPerSecond: Double, deltaSeconds: Double): Double {
   val target = max(

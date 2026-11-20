@@ -43,10 +43,10 @@ class SceneController {
   private var tiltY = 0.0
   private var entranceStartedAt: Double? = null
 
-  /** Last scroll offset and time a frame saw, and the filtered sway of the boxes. */
-  private var swayOffset = 0.0
-  private var swayTime = 0.0
+  /** [last offset, time it changed, smoothed scroll speed], the filtered sway of the boxes, and the smoothed offset of their parallax turn. */
+  private var scrollVelocity = ScrollVelocityState(0.0, 0.0, 0.0)
   private var swayValue = 0.0
+  private var parallaxOffset: Double? = null
   private var wakeUntilMilliseconds = 0.0
 
   fun setCardCount(count: Int, now: Double) {
@@ -158,12 +158,13 @@ class SceneController {
     val lidAngleRadians = computeLidAngleRadians(lidProgress, scene.lidTarget == 1.0) +
       (if (scene.lidTarget == 1.0) computeLidSettleDegrees(popElapsed) * Math.PI / 180 else 0.0)
 
-    val scrollDeltaSeconds = (now - swayTime) / 1000
-    val scrollVelocity = if (scrollDeltaSeconds > 0 && scrollDeltaSeconds < 0.2) (scrollOffset - swayOffset) / scrollDeltaSeconds else 0.0
-    val sway = stepScrollSway(swayValue, scrollVelocity, deltaSeconds)
-    swayOffset = scrollOffset
-    swayTime = now
+    val scrollVelocityNow = stepScrollVelocity(scrollVelocity, scrollOffset, now, deltaSeconds)
+    val sway = stepScrollSway(swayValue, scrollVelocityNow.velocity, deltaSeconds)
+    val listScrollOffset = extrapolateScrollOffset(scrollOffset, scrollVelocityNow.velocity, scrollVelocityNow.changedAtMilliseconds, now)
+    val parallaxOffsetNow = parallaxOffset?.let { stepParallaxOffset(it, listScrollOffset, deltaSeconds) } ?: listScrollOffset
+    scrollVelocity = scrollVelocityNow
     swayValue = sway
+    parallaxOffset = parallaxOffsetNow
 
     val isAutoRotateAllowed = scene.focusTarget == 1.0 && scene.lidTarget == 0.0 && focusLinearProgress >= 1
     if (isDragStateAnimating(dragState, isAutoRotateAllowed)) {
@@ -180,13 +181,14 @@ class SceneController {
     val poses = ArrayList<OpeningPose>(cardCount)
     var shakeX = 0.0
     for (cardIndex in 0 until cardCount) {
-      val listPose = computeBoxPose(cardIndex, scrollOffset, viewportHeight)
+      val listPose = computeBoxPose(cardIndex, listScrollOffset, viewportHeight)
+      val parallaxYawRadians = computeBoxPose(cardIndex, parallaxOffsetNow, viewportHeight).yawRadians
       val entranceScale = computeEntranceScale(now - entranceStart - cardIndex * SceneConfig.ENTRANCE_STAGGER_MILLISECONDS)
       val squeeze = if (pressState.cardIndex == cardIndex) pressScale else 1.0
       val openingPose = computeOpeningPose(
         OpeningPoseInput(
           listPose = listPose.copy(
-            scale = listPose.scale * entranceScale * squeeze, yawRadians = listPose.yawRadians + sway, pitchRadians = listPose.pitchRadians + sway * 0.5,
+            scale = listPose.scale * entranceScale * squeeze, yawRadians = parallaxYawRadians + sway, pitchRadians = listPose.pitchRadians + sway * 0.5,
           ),
           isFocusedCard = cardIndex == scene.focusedCardIndex,
           lidProgress = lidProgress, focusProgress = focusProgress, dollyProgress = dollyProgress,

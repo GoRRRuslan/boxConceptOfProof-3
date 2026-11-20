@@ -44,6 +44,9 @@ interface IUseOpeningFacadeParams {
   cards: ICatalogueCard[]
 }
 
+// When the sounds are prepared: after the entrance of the boxes, before anyone has tapped anything.
+const SOUND_PREPARE_DELAY_MILLISECONDS = 2500
+
 const INTERACTIVE_PHASES = [EOpeningPhase.Inspecting, EOpeningPhase.Ready, EOpeningPhase.Revealed]
 
 const REVEAL_SOUNDS: Record<EWatchRarity, ESoundEffect> = {
@@ -242,10 +245,11 @@ export const useOpeningFacade = ({ boxesData, cards }: IUseOpeningFacadeParams):
     runOnJS: true,
     enabled: isGestureEnabled,
     onUpdate: event => {
-      MysteryScene.dragBy(event.changeX, phase === EOpeningPhase.Ready ? 0 : event.changeY)
+      // Vertical drag is inverted on purpose: the finger moving up turns the top of the box up (and down turns it down).
+      MysteryScene.dragBy(event.changeX, phase === EOpeningPhase.Ready ? 0 : -event.changeY)
     },
     onDeactivate: event => {
-      MysteryScene.dragEnd(event.velocityX, phase === EOpeningPhase.Ready ? 0 : event.velocityY)
+      MysteryScene.dragEnd(event.velocityX, phase === EOpeningPhase.Ready ? 0 : -event.velocityY)
 
       if (phase === EOpeningPhase.Ready && event.translationY < -OPEN_SWIPE_DISTANCE) {
         handleOpenPress()
@@ -293,6 +297,15 @@ export const useOpeningFacade = ({ boxesData, cards }: IUseOpeningFacadeParams):
     },
     [],
   )
+
+  // The audio session and the players are created while the app is idle after the start, not on the first sound (a stall of about a second).
+  useEffect(() => {
+    const prepareTimer = setTimeout(soundEffects.prepare, SOUND_PREPARE_DELAY_MILLISECONDS)
+
+    return () => {
+      clearTimeout(prepareTimer)
+    }
+  }, [])
 
   // ------------------------ View data ------------------------ //
   const primaryButton: IOpeningPrimaryButton | null = primaryActionState

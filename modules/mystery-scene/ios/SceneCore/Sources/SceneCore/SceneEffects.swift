@@ -65,6 +65,15 @@ public enum EffectsConfig {
   public static let swayRadiansPerPixelPerSecond = 0.00035
   public static let swayMaximumRadians = 0.25
   public static let swayResponsePerSecond = 10.0
+  // The scroll speed is estimated from the scroll EVENTS (they reach the scene irregularly, not once per frame) and smoothed.
+  public static let swayVelocitySmoothingPerEvent = 0.3
+  public static let swayVelocityFadePerSecond = 12.0
+  public static let swayVelocitySilenceSeconds = 0.1
+  public static let swayVelocityMaximumEventGapSeconds = 0.25
+  // Between two scroll events the boxes keep moving at the last speed for at most this long.
+  public static let scrollExtrapolationMaximumSeconds = 0.05
+  // The turn of a box with its place on the screen (the parallax) follows the offset with this time constant.
+  public static let parallaxOffsetSmoothingSeconds = 0.07
 
   public struct RarityProfile {
     public let burstCount: Int
@@ -251,6 +260,38 @@ public func transformModelPoint(_ x: Double, _ y: Double, _ z: Double, centerHei
   return (
     scaledX * yawCos + pitchedZ * yawSin, pitchedY + pose.translateY, -scaledX * yawSin + pitchedZ * yawCos + pose.translateZ
   )
+}
+
+/// The scroll speed (pixels per second) from the scroll offset the scene is given: (last offset, time it last changed, smoothed speed).
+/// The offset changes only when a scroll event arrives, which is irregular: the speed is measured between CHANGES of the offset,
+/// smoothed over events, and fades out when no event arrives.
+public func stepScrollVelocity(
+  _ previous: (Double, Double, Double), _ currentOffset: Double, _ nowMilliseconds: Double, _ deltaSeconds: Double
+) -> (Double, Double, Double) {
+  let (lastOffset, lastChangeMilliseconds, velocity) = previous
+  if currentOffset != lastOffset {
+    let gapSeconds = (nowMilliseconds - lastChangeMilliseconds) / 1000
+    let instantVelocity =
+      gapSeconds > 0 && gapSeconds < EffectsConfig.swayVelocityMaximumEventGapSeconds ? (currentOffset - lastOffset) / gapSeconds : 0
+    return (currentOffset, nowMilliseconds, velocity + (instantVelocity - velocity) * EffectsConfig.swayVelocitySmoothingPerEvent)
+  }
+  let isOverdue = (nowMilliseconds - lastChangeMilliseconds) / 1000 > EffectsConfig.swayVelocitySilenceSeconds
+  return (
+    lastOffset, lastChangeMilliseconds, isOverdue ? velocity * exp(-EffectsConfig.swayVelocityFadePerSecond * deltaSeconds) : velocity
+  )
+}
+
+/// Where the list is NOW: the offset carried on at the smoothed speed between two events, for a few frames at most.
+public func extrapolateScrollOffset(
+  _ offset: Double, _ velocityPixelsPerSecond: Double, _ lastChangeMilliseconds: Double, _ nowMilliseconds: Double
+) -> Double {
+  let secondsSinceChange = max(0, min(EffectsConfig.scrollExtrapolationMaximumSeconds, (nowMilliseconds - lastChangeMilliseconds) / 1000))
+  return offset + velocityPixelsPerSecond * secondsSinceChange
+}
+
+/// The offset the parallax turn of the boxes is computed from: an exponential follower of the real offset.
+public func stepParallaxOffset(_ previousOffset: Double, _ targetOffset: Double, _ deltaSeconds: Double) -> Double {
+  previousOffset + (targetOffset - previousOffset) * (1 - exp(-deltaSeconds / EffectsConfig.parallaxOffsetSmoothingSeconds))
 }
 
 public func stepScrollSway(_ previousSway: Double, _ scrollVelocityPixelsPerSecond: Double, _ deltaSeconds: Double) -> Double {

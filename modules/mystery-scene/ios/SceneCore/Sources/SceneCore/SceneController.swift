@@ -39,8 +39,10 @@ public final class SceneController {
   private var pressState = PressState()
   private var tilt: (Double, Double) = (0, 0)
   private var entranceStartedAt: Double?
-  // Last scroll offset and time a frame saw, and the filtered sway of the boxes.
-  private var sway: (Double, Double, Double) = (0, 0, 0)
+  // (last offset, time it changed, smoothed scroll speed), the filtered sway of the boxes, and the smoothed offset of their parallax turn.
+  private var scrollVelocity: (Double, Double, Double) = (0, 0, 0)
+  private var sway = 0.0
+  private var parallaxOffset: Double?
   private var wakeUntilMilliseconds = 0.0
 
   // How long the scene keeps drawing after a command whose effect has no explicit animation.
@@ -165,10 +167,13 @@ public final class SceneController {
       computeLidAngleRadians(lidProgress: lidProgress, isOpening: scene.lidTarget == 1)
       + (scene.lidTarget == 1 ? computeLidSettleDegrees(popElapsed) * Double.pi / 180 : 0)
 
-    let scrollDeltaSeconds = (now - sway.1) / 1000
-    let scrollVelocity = scrollDeltaSeconds > 0 && scrollDeltaSeconds < 0.2 ? (scrollOffset - sway.0) / scrollDeltaSeconds : 0
-    let swayNow = stepScrollSway(sway.2, scrollVelocity, deltaSeconds)
-    sway = (scrollOffset, now, swayNow)
+    let scrollVelocityNow = stepScrollVelocity(scrollVelocity, scrollOffset, now, deltaSeconds)
+    let swayNow = stepScrollSway(sway, scrollVelocityNow.2, deltaSeconds)
+    let listScrollOffset = extrapolateScrollOffset(scrollOffset, scrollVelocityNow.2, scrollVelocityNow.1, now)
+    let parallaxOffsetNow = parallaxOffset.map { stepParallaxOffset($0, listScrollOffset, deltaSeconds) } ?? listScrollOffset
+    scrollVelocity = scrollVelocityNow
+    sway = swayNow
+    parallaxOffset = parallaxOffsetNow
 
     let isAutoRotateAllowed = scene.focusTarget == 1 && scene.lidTarget == 0 && focusLinearProgress >= 1
 
@@ -188,12 +193,13 @@ public final class SceneController {
     cards.reserveCapacity(cardCount)
 
     for cardIndex in 0..<cardCount {
-      var listPose = computeBoxPose(cardIndex: cardIndex, scrollOffset: scrollOffset, viewportHeight: viewportHeight)
+      var listPose = computeBoxPose(cardIndex: cardIndex, scrollOffset: listScrollOffset, viewportHeight: viewportHeight)
+      let parallaxYawRadians = computeBoxPose(cardIndex: cardIndex, scrollOffset: parallaxOffsetNow, viewportHeight: viewportHeight).yawRadians
       let entranceScale = computeEntranceScale(
         now - entranceStart - Double(cardIndex) * SceneConfig.entranceStaggerMilliseconds)
       let squeeze = pressState.cardIndex == cardIndex ? pressScale : 1
       listPose.scale = listPose.scale * entranceScale * squeeze
-      listPose.yawRadians += swayNow
+      listPose.yawRadians = parallaxYawRadians + swayNow
       listPose.pitchRadians += swayNow * 0.5
       let openingPose = computeOpeningPose(
         OpeningPoseInput(

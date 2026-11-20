@@ -45,7 +45,13 @@ import {
   SHAFT_WIDTH_GROWTH,
   SWAY_MAXIMUM_RADIANS,
   SWAY_RADIANS_PER_PIXEL_PER_SECOND,
+  PARALLAX_OFFSET_SMOOTHING_SECONDS,
+  SCROLL_EXTRAPOLATION_MAXIMUM_SECONDS,
   SWAY_RESPONSE_PER_SECOND,
+  SWAY_VELOCITY_FADE_PER_SECOND,
+  SWAY_VELOCITY_MAXIMUM_EVENT_GAP_SECONDS,
+  SWAY_VELOCITY_SILENCE_SECONDS,
+  SWAY_VELOCITY_SMOOTHING_PER_EVENT,
   type IRarityEffectProfile,
 } from '@flows/openingFlow/_config/effectsConfig'
 import { clampToUnitInterval, easeOutCubic } from '@flows/openingFlow/_facadesLogic/openingEasing'
@@ -325,6 +331,49 @@ export const transformModelPoint = (
   const yawSin = Math.sin(pose.yawRadians)
 
   return [scaledX * yawCos + pitchedZ * yawSin, pitchedY + pose.translateY, -scaledX * yawSin + pitchedZ * yawCos + pose.translateZ]
+}
+
+// The scroll speed (pixels per second) from the scroll offset the scene is given: [last offset, time it last changed, smoothed speed].
+// The offset changes only when a scroll event arrives, which is irregular (a frame may see no event, the next one two). Measuring the
+// speed per frame made it jump between 0 and double, and the boxes twitched left and right: the speed is measured between CHANGES of the
+// offset, smoothed over events, and fades out when no event arrives.
+export const stepScrollVelocity = (
+  previous: [number, number, number],
+  currentOffset: number,
+  nowMilliseconds: number,
+  deltaSeconds: number,
+): [number, number, number] => {
+  const [lastOffset, lastChangeMilliseconds, velocity] = previous
+
+  if (currentOffset !== lastOffset) {
+    const gapSeconds = (nowMilliseconds - lastChangeMilliseconds) / 1000
+    const instantVelocity = gapSeconds > 0 && gapSeconds < SWAY_VELOCITY_MAXIMUM_EVENT_GAP_SECONDS ? (currentOffset - lastOffset) / gapSeconds : 0
+
+    return [currentOffset, nowMilliseconds, velocity + (instantVelocity - velocity) * SWAY_VELOCITY_SMOOTHING_PER_EVENT]
+  }
+
+  const isOverdue = (nowMilliseconds - lastChangeMilliseconds) / 1000 > SWAY_VELOCITY_SILENCE_SECONDS
+
+  return [lastOffset, lastChangeMilliseconds, isOverdue ? velocity * Math.exp(-SWAY_VELOCITY_FADE_PER_SECOND * deltaSeconds) : velocity]
+}
+
+// Where the list is NOW. The scroll events reach the scene late and in bursts, so the last offset is a little old and moves in steps: the
+// boxes lagged behind the text of the cards and twitched. Between two events the offset is carried on at the smoothed speed, for a few
+// frames at most (a stop is never overshot by more than a few pixels).
+export const extrapolateScrollOffset = (
+  offset: number,
+  velocityPixelsPerSecond: number,
+  lastChangeMilliseconds: number,
+  nowMilliseconds: number,
+): number => {
+  const secondsSinceChange = Math.max(0, Math.min(SCROLL_EXTRAPOLATION_MAXIMUM_SECONDS, (nowMilliseconds - lastChangeMilliseconds) / 1000))
+
+  return offset + velocityPixelsPerSecond * secondsSinceChange
+}
+
+// The offset the parallax turn of the boxes is computed from: it follows the real offset smoothly (an exponential follower).
+export const stepParallaxOffset = (previousOffset: number, targetOffset: number, deltaSeconds: number): number => {
+  return previousOffset + (targetOffset - previousOffset) * (1 - Math.exp(-deltaSeconds / PARALLAX_OFFSET_SMOOTHING_SECONDS))
 }
 
 // Low-pass filtered sway of the list boxes from the scroll speed (pixels per second): they lean against the direction of

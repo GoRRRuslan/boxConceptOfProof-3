@@ -15,7 +15,10 @@ import {
   computeSeamIntensity,
   computeShaftEffect,
   getPopElapsedMilliseconds,
+  extrapolateScrollOffset,
+  stepParallaxOffset,
   stepScrollSway,
+  stepScrollVelocity,
   transformModelPoint,
 } from '@flows/openingFlow/_facadesLogic/computeSceneEffects'
 import { INITIAL_OPENING_SCENE_STATE, setGlowColor, startFocus, startLidOpen } from '@flows/openingFlow/_facadesLogic/openingSceneState'
@@ -211,6 +214,102 @@ describe('computeSceneEffects', () => {
       expect(yawedX).toBeCloseTo(0, 6)
 
       expect(yawedZ).toBeCloseTo(-1, 6)
+    })
+  })
+
+  describe('scroll velocity', () => {
+    it('stays steady when scroll events arrive irregularly (a frame may see no event, the next one two)', () => {
+      // A steady scroll of 1200 px per second seen through events that come every 16 ms, but are delivered unevenly to the frames.
+      let state: [number, number, number] = [0, 0, 0]
+      let offset = 0
+      const velocities: number[] = []
+
+      for (let frame = 1; frame <= 120; frame += 1) {
+        const nowMilliseconds = frame * (1000 / 60)
+        const eventsThisFrame = frame % 3 === 0 ? 0 : frame % 3 === 1 ? 1 : 2
+
+        offset += eventsThisFrame * 1200 * 0.016
+
+        state = stepScrollVelocity(state, offset, nowMilliseconds, 1 / 60)
+
+        velocities.push(state[2])
+      }
+
+      const settled = velocities.slice(60)
+      const minimum = Math.min(...settled)
+      const maximum = Math.max(...settled)
+
+      expect(minimum).toBeGreaterThan(0)
+
+      // The raw per-frame speed jumped between 0 and about double: the smoothed one stays within a third of its mean.
+      expect((maximum - minimum) / ((maximum + minimum) / 2)).toBeLessThan(0.35)
+    })
+
+    it('fades out when the events stop, and does not change without a new offset', () => {
+      let state: [number, number, number] = [500, 1000, 900]
+
+      state = stepScrollVelocity(state, 500, 1050, 1 / 60)
+
+      expect(state[2]).toBe(900)
+
+      for (let frame = 0; frame < 60; frame += 1) {
+        state = stepScrollVelocity(state, 500, 1200 + frame * 16.7, 1 / 60)
+      }
+
+      expect(state[2]).toBeLessThan(5)
+    })
+  })
+
+  describe('parallax offset', () => {
+    it('follows the offset smoothly and turns a stepped offset into a gentle one', () => {
+      let followed = 0
+
+      const stepsOfTheEvents: number[] = []
+
+      // The real offset moves in uneven steps (0 and 40 px per frame, average 20 px).
+      for (let frame = 1; frame <= 60; frame += 1) {
+        const target = Math.floor(frame / 2) * 40
+
+        const next = stepParallaxOffset(followed, target, 1 / 60)
+
+        stepsOfTheEvents.push(next - followed)
+
+        followed = next
+      }
+
+      const settled = stepsOfTheEvents.slice(20)
+
+      expect(Math.max(...settled) - Math.min(...settled)).toBeLessThan(8)
+
+      expect(followed).toBeGreaterThan(1000)
+    })
+
+    it('reaches the target and never overshoots it', () => {
+      let followed = 0
+
+      for (let frame = 0; frame < 120; frame += 1) {
+        followed = stepParallaxOffset(followed, 500, 1 / 60)
+
+        expect(followed).toBeLessThanOrEqual(500)
+      }
+
+      expect(followed).toBeCloseTo(500, 0)
+    })
+  })
+
+  describe('scroll offset extrapolation', () => {
+    it('carries the offset on at the last speed between two events, for a few frames at most', () => {
+      expect(extrapolateScrollOffset(1000, 1200, 5000, 5000)).toBe(1000)
+
+      expect(extrapolateScrollOffset(1000, 1200, 5000, 5025)).toBeCloseTo(1030, 6)
+
+      // 0.5 s without an event: no more than the 0.05 s window (60 px at 1200 px/s).
+      expect(extrapolateScrollOffset(1000, 1200, 5000, 5500)).toBeCloseTo(1060, 6)
+
+      expect(extrapolateScrollOffset(1000, -600, 5000, 5500)).toBeCloseTo(970, 6)
+
+      // A time before the last change (clock noise) never moves the offset backwards.
+      expect(extrapolateScrollOffset(1000, 1200, 5000, 4990)).toBe(1000)
     })
   })
 

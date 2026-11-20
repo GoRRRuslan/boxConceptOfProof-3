@@ -49,7 +49,7 @@ jest.mock('@services/sounds/soundEffects', () => ({
     RevealLegendary: 'revealLegendary',
     Error: 'error',
   },
-  soundEffects: { play: jest.fn() },
+  soundEffects: { play: jest.fn(), prepare: jest.fn() },
 }))
 
 jest.mock('@services/haptics/hapticFeedback', () => ({
@@ -580,7 +580,8 @@ describe('useOpeningFacade', () => {
         getGestures(result).pan.onUpdate({ changeX: 50, changeY: 10 })
       })
 
-      expect(MysteryScene.dragBy).toHaveBeenCalledWith(50, 10)
+      // The vertical part is inverted: a finger moving down by 10 is sent as -10.
+      expect(MysteryScene.dragBy).toHaveBeenCalledWith(50, -10)
     })
 
     it('lifting the finger hands the speed to the scene, which keeps the box turning (inertia)', async () => {
@@ -594,7 +595,8 @@ describe('useOpeningFacade', () => {
         getGestures(result).pan.onDeactivate({ velocityX: 900, velocityY: -300, translationY: 0 })
       })
 
-      expect(MysteryScene.dragEnd).toHaveBeenCalledWith(900, -300)
+      // The vertical speed is inverted like the vertical drag: -300 (moving up) is sent as +300.
+      expect(MysteryScene.dragEnd).toHaveBeenCalledWith(900, 300)
     })
 
     it('swiping up on a bought box opens it, a short swipe does not', async () => {

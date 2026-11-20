@@ -72,6 +72,17 @@ export const IRIDESCENCE_TIME_FREQUENCY = 0.0006
 export const SWAY_RADIANS_PER_PIXEL_PER_SECOND = 0.00035
 export const SWAY_MAXIMUM_RADIANS = 0.25
 export const SWAY_RESPONSE_PER_SECOND = 10
+// The scroll speed is estimated from the scroll EVENTS (they reach the scene irregularly, not once per frame) and smoothed:
+// how much of the gap to the newest estimate is taken per event, and how fast the speed fades once the events stop.
+export const SWAY_VELOCITY_SMOOTHING_PER_EVENT = 0.3
+export const SWAY_VELOCITY_FADE_PER_SECOND = 12
+export const SWAY_VELOCITY_SILENCE_SECONDS = 0.1
+export const SWAY_VELOCITY_MAXIMUM_EVENT_GAP_SECONDS = 0.25
+// Between two scroll events the boxes keep moving at the last speed for at most this long (the events arrive late and in bursts).
+export const SCROLL_EXTRAPOLATION_MAXIMUM_SECONDS = 0.05
+// The turn of a box with its place on the screen (the parallax) follows the offset with this time constant, so that the small steps
+// of the offset do not show as a twitch of the box to the left and right.
+export const PARALLAX_OFFSET_SMOOTHING_SECONDS = 0.07
 
 export interface IRarityEffectProfile {
   burstCount: number

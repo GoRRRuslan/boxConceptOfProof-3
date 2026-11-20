@@ -17,7 +17,10 @@ import {
   computeSeamIntensity,
   getPopElapsedMilliseconds,
   getRarityProfile,
+  extrapolateScrollOffset,
+  stepParallaxOffset,
   stepScrollSway,
+  stepScrollVelocity,
 } from '@flows/openingFlow/_facadesLogic/computeSceneEffects'
 import { easeInOutCubic, easeOutBack } from '@flows/openingFlow/_facadesLogic/openingEasing'
 import {
@@ -119,8 +122,10 @@ export class SceneReference {
   private press: IPressState = INITIAL_PRESS_STATE
   private tilt: [number, number] = [0, 0]
   private entranceStartedAt: number | null = null
-  // Last scroll offset and time seen by a frame, and the filtered sway of the boxes.
-  private sway: [number, number, number] = [0, 0, 0]
+  // [last offset, time it changed, smoothed scroll speed], the filtered sway of the boxes, and the smoothed offset of their parallax turn.
+  private scrollVelocity: [number, number, number] = [0, 0, 0]
+  private sway = 0
+  private parallaxOffset: number | null = null
 
   public constructor(
     private readonly viewportWidth: number,
@@ -215,12 +220,17 @@ export class SceneReference {
         (scene.lidTarget === 1 ? computeLidSettleDegrees(popElapsed) : 0)) *
         Math.PI) /
       180
-    const [lastScrollOffset, lastScrollTime, previousSway] = this.sway
-    const scrollDeltaSeconds = (now - lastScrollTime) / 1000
-    const scrollVelocity = scrollDeltaSeconds > 0 && scrollDeltaSeconds < 0.2 ? (this.scrollOffset - lastScrollOffset) / scrollDeltaSeconds : 0
-    const sway = stepScrollSway(previousSway, scrollVelocity, deltaSeconds)
+    const scrollVelocity = stepScrollVelocity(this.scrollVelocity, this.scrollOffset, now, deltaSeconds)
+    const sway = stepScrollSway(this.sway, scrollVelocity[2], deltaSeconds)
+    const listScrollOffset = extrapolateScrollOffset(this.scrollOffset, scrollVelocity[2], scrollVelocity[1], now)
+    const parallaxOffset =
+      this.parallaxOffset === null ? listScrollOffset : stepParallaxOffset(this.parallaxOffset, listScrollOffset, deltaSeconds)
 
-    this.sway = [this.scrollOffset, now, sway]
+    this.scrollVelocity = scrollVelocity
+
+    this.sway = sway
+
+    this.parallaxOffset = parallaxOffset
     const isAutoRotateAllowed = scene.focusTarget === 1 && scene.lidTarget === 0 && focusLinearProgress >= 1
 
     if (isDragStateAnimating(this.drag, isAutoRotateAllowed)) {
@@ -236,8 +246,9 @@ export class SceneReference {
     let shakeX = 0
 
     for (let cardIndex = 0; cardIndex < this.cardCount; cardIndex += 1) {
-      const baseListPose = computeBoxPose({ cardIndex, scrollOffset: this.scrollOffset, viewportHeight: this.viewportHeight })
-      const listPose = { ...baseListPose, yawRadians: baseListPose.yawRadians + sway, pitchRadians: baseListPose.pitchRadians + sway * 0.5 }
+      const baseListPose = computeBoxPose({ cardIndex, scrollOffset: listScrollOffset, viewportHeight: this.viewportHeight })
+      const parallaxYawRadians = computeBoxPose({ cardIndex, scrollOffset: parallaxOffset, viewportHeight: this.viewportHeight }).yawRadians
+      const listPose = { ...baseListPose, yawRadians: parallaxYawRadians + sway, pitchRadians: baseListPose.pitchRadians + sway * 0.5 }
       const entranceScale = computeEntranceScale(now - entranceStart - cardIndex * ENTRANCE_STAGGER_MILLISECONDS)
       const squeeze = this.press.cardIndex === cardIndex ? pressScale : 1
       const openingPose = computeOpeningPose({
