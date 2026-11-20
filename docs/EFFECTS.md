@@ -2,6 +2,10 @@
 
 Everything that happens in the 3D scene besides the box itself: the light in the seams, the light curtain, the shock waves, the sparks, the dust, the glow behind every box, the camera punch and the little physical touches. The look is the same in all three repositories; the numbers are one configuration file, [`effectsConfig.ts`](../src/flows/openingFlow/_config/effectsConfig.ts), and the maths is one pure file, in three languages: the TypeScript reference [`computeSceneEffects.ts`](../src/flows/openingFlow/_facadesLogic/computeSceneEffects.ts) and its ports [`SceneEffects.swift`](../modules/mystery-scene/ios/SceneCore/Sources/SceneCore/SceneEffects.swift) and [`SceneEffects.kt`](../modules/mystery-scene/android/src/main/java/expo/modules/mysteryscene/math/SceneEffects.kt). The native scene computes where every object of the show is (`EffectsLayout`) and only draws it; the shared test vectors prove that Swift and Kotlin agree with the TypeScript reference to 1e-9.
 
+Left: iOS (SceneKit), the light curtain rises from the open box. Right: Android (Filament), the shock wave and the sparks at the moment the lid is let go.
+
+![](media/effects-ios-light-curtain.png) ![](media/effects-android-shock-wave.png)
+
 ## Timeline of an opening
 
 | Moment | What you see | Where |

@@ -8,6 +8,7 @@ Release builds, **iOS Simulator iPhone 17** and **Android Emulator MW_Pixel9_API
 |---|---|---|
 | Lint + types | `yarn ciPipeline` | ✅ clean |
 | Jest | `yarn test` | ✅ 233 tests, 40 suites (incl. the scene vector generator check) |
+| The show around the box (native) | Swift `SceneCore` parity with the TypeScript reference including every object of the show (5 / 5), Kotlin JUnit parity (5 / 5); iOS (SceneKit) and Android (Filament) release builds: seams, light curtain, shock wave, sparks, dust, camera punch | ✅ both platforms looked at with screenshots ([docs/EFFECTS.md](EFFECTS.md)) |
 | Swift scene core (XCTest, on the Mac) | `swift test` in `modules/mystery-scene/ios/SceneCore` | ✅ 5 tests: parity with the TypeScript reference (3 scenarios, 1e-9) + 4 behaviour tests |
 | Kotlin scene core (JUnit) | `./gradlew :mystery-scene:testDebugUnitTest` | ✅ 5 tests, same checks |
 | Release builds | xcodebuild Release / `gradlew assembleRelease` | ✅ both |
