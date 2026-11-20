@@ -40,7 +40,7 @@ In round 2 the Android scene showed **no boxes for 10-14 s after launch** on the
 
 - Catalogue scroll: **60.0 FPS, 69 windows, 4,174 frames, 0 slow frames, worst frame 17 ms** (same as repo 1).
 - Opening flow, 4 purchases: **59.8 FPS**, 58 windows, 3,490 frames, 11 slow frames (0.3 %), worst frame 50 ms, lowest window 57.0.
-- Caveat: with the emulator **window** open (not headless) the same build scrolled at only 43-46 FPS in two runs: the window compositing/Vulkan path of the emulator costs a lot. Measure headless (`-no-window`).
+- Caveat (emulator trade-off, not an app problem): with the emulator **window** open (not headless) the same build scrolled at only 43-46 FPS in two runs: the window compositing/Vulkan path of the emulator costs a lot. Measure headless (`-no-window`).
 
 ## 3. Scroll sync
 
@@ -51,3 +51,8 @@ The scene reads the list's native scroll view itself (KVO on iOS, a scroll liste
 - Emulator / simulator only; the iOS number comes from SceneKit's update callback (frames rendered), the Android one from vsync-aligned Choreographer times; no SurfaceFlinger or Instruments cross-check was run.
 - Opening flow, 64-box stress and CPU/memory were not measured.
 - Render-on-demand windows: the meter only reports while the scene draws.
+
+
+## 5. Windowed emulator (Android)
+
+With the emulator window open the Vulkan build scrolls at 43-46 FPS (headless: 60.0). Repo 1, measured by the parent session with the same Vulkan-in-window setup, shows 34-40 FPS, so this is how the emulator composites its window with a Vulkan app, not something specific to this scene. No further tuning was done (MSAA is already off on Android; post effects are FXAA, ambient occlusion and bloom at LOW quality). For FPS numbers use a headless emulator (`-no-window`, `yarn androidEmulatorStart`). A switch to the OpenGL ES backend exists in code (`FilamentBoxScene.kt`, `Engine.create()` instead of `Engine.Backend.VULKAN`), at the price of the 10-14 s shader compile described in 2b.

@@ -252,7 +252,7 @@ Every sound is synthesised by a script (`yarn assetsSounds`, `scripts/assets/gen
 | Collection | ![](media/ios-12-collection.png) | ![](media/android-13-collection.png) |
 | Detail sheet | ![](media/ios-13-collection-detail.png) | ![](media/android-14-collection-detail.png) |
 
-More screenshots: pinch zoom ([iOS](media/ios-14-pinch-zoom.png)), double-tap reset ([iOS](media/ios-15-double-tap-reset.png)), swipe-up open ([iOS](media/ios-16-swipe-up-opening.png), [Android](media/android-16-swipe-up-opening.png)), Epic ([iOS](media/ios-19-reveal-epic.png)), Rare ([Android](media/android-17-reveal-purchase2.png)), Legendary ([Android](media/android-18-reveal-purchase5-classic.png)), failure ([Android](media/android-22-failure-server-error.png)). Not captured: press squeeze mid-flight, Legendary on iOS. They are listed in [TEST_CHECKLIST.md](TEST_CHECKLIST.md) as not re-run.
+More screenshots: pinch zoom ([iOS](media/ios-14-pinch-zoom.png)), double-tap reset ([iOS](media/ios-15-double-tap-reset.png)), swipe-up open ([iOS](media/ios-16-swipe-up-opening.png), [Android](media/android-16-swipe-up-opening.png)), Epic ([iOS](media/ios-19-reveal-epic.png)), Rare ([Android](media/android-17-reveal-purchase2.png)), Legendary ([Android](media/android-18-reveal-purchase5-classic.png)), failure ([Android](media/android-22-failure-server-error.png)). Legendary on iOS: [reveal](media/ios-20-reveal-legendary.png), [box put away](media/ios-21-legendary-put-away.png). Press squeeze: [iOS](media/ios-04-press-squeeze.png). They are listed in [TEST_CHECKLIST.md](TEST_CHECKLIST.md) as not re-run.
 
 ## What differs from the first version (react-native-filament)
 
