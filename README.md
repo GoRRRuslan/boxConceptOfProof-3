@@ -29,7 +29,7 @@ Verified on **release builds**, iOS Simulator (iPhone 17, iOS 27) and Android Em
 - ✅ `yarn ciPipeline` clean, `yarn test` green, Swift (XCTest) and Kotlin (JUnit) parity tests green
 - ✅ catalogue scroll FPS: iOS 60.0 (0 slow frames after the first window), Android 60.0 after the first 3 windows (see [PERFORMANCE.md](docs/PERFORMANCE.md))
 - ✅ Android boxes are on screen with the list (first frame 33-38 ms after the data; Filament runs on Vulkan, the OpenGL backend needed 10-14 s to compile shaders on the emulator, see [PERFORMANCE.md 2b](docs/PERFORMANCE.md))
-- ⚠️ **Not verified / gaps:** Rare reveal on iOS and Legendary on iOS (Legendary and Rare shown on Android, Epic and Common on iOS), failure injection only `serverError` and only on Android (the other modes by unit tests), pinch only on iOS (adb cannot send it), press squeeze not caught in a screenshot, device tilt, physical devices, iOS boxes are ~10 % smaller than in repo 1 (not fixed). Details: [docs/TEST_CHECKLIST.md](docs/TEST_CHECKLIST.md).
+- ⚠️ **Not verified / gaps:** Legendary reveal on iOS (shown on Android), Android pinch (adb cannot send two fingers), device tilt, physical devices. Verified on a device in round 3: iOS press squeeze (0.92), iOS `networkError` / `responseLost`, iOS box size identical to repo 1. Details: [docs/TEST_CHECKLIST.md](docs/TEST_CHECKLIST.md).
 
 ## 2. Quick start
 

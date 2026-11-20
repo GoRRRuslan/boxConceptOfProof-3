@@ -48,16 +48,16 @@ Pinch, double-tap reset, press squeeze, swipe-up-to-open, Rare/Epic/Legendary re
 | Boxes visible after launch | ✅ with the Vulkan backend (4/4 cold launches: boxes at the first screenshot, first frame 33-38 ms after the data); before: 10-14 s late (bug B6) | ✅ |
 | Pinch zoom | ➖ (adb cannot send two fingers) | ✅ zoom to the 2x limit ([shot](media/ios-14-pinch-zoom.png)) |
 | Double-tap reset | ➖ | ✅ ([shot](media/ios-15-double-tap-reset.png)) |
-| Press squeeze | ⚠️ long press taken, effect not visible in the picture | ⚠️ same |
+| Press squeeze | ➖ | ✅ measured: the pressed box is 454 px wide against 493 px released (0.92 = `PRESS_SCALE`), [shot](media/ios-04-press-squeeze.png) |
 | Swipe up opens a bought box | ✅ ([shot](media/android-16-swipe-up-opening.png)) | ✅ ([shot](media/ios-16-swipe-up-opening.png)) |
 | Reveal Common / Rare / Epic / Legendary | Common ✅, Rare ✅ (purchase 2), Legendary ✅ (5th purchase: 4 Starter + Classic, balance $650 = exactly-once) | Common ✅, Epic ✅ ([shot](media/ios-19-reveal-epic.png)), Rare ⚠️ shot taken during the flow (`ios-18-reveal-rare.png`), Legendary ➖ |
 | Failure injection `serverError` | ✅ error text, balance unchanged $1,000, Buy available again ([shot](media/android-22-failure-server-error.png)) | ➖ (same TypeScript; unit tests) |
-| `networkError`, `responseLost` | ➖ unit tests only | ➖ |
+| `networkError`, `responseLost` | ➖ | ✅ both: error text, balance $1,000 unchanged, Buy available ([network](media/ios-21-failure-network-error.png), [lost](media/ios-22-failure-response-lost.png)); the retry-returns-the-same-watch part is unit-tested only |
 | Opening-flow FPS | 59.8 FPS, 0.3 % slow frames (Vulkan) | 60.0 FPS |
 | iOS glow strength | n/a | ✅ intensity 1.6, visible in the prize colour ([shot](media/ios-09-lid-opening-glow.png)); 4 blew out to white |
-| Box size vs repo 1 (~10 % smaller) | ➖ not fixed (no comparable final-state screenshot of repo 1) | ➖ not fixed |
+| Box size vs repo 1 | ➖ | ✅ **identical**: first catalogue box 493 x 485 px here and 493 x 483 px in repo 1's final screenshot (`animations/01-entrance-done.png`), same position; the "10 % smaller" came from comparing with an older repo 1 screenshot |
 
-Still not run: iOS Legendary, `networkError` / `responseLost` on a device, press squeeze visible in a picture, iOS box size vs repo 1, device tilt, background/foreground, empty-collection screen, physical devices.
+Still not run: iOS Legendary reveal (the prize depends on the purchase number: the 5th purchase must be a Classic box after exactly four Starters; the attempt on iOS gave Epic and Rare because the count was off), device tilt, background/foreground, empty-collection screen, physical devices.
 
 ## 4c. Bugs of round 2
 
