@@ -10,6 +10,15 @@ import {
 } from '@flows/catalogueFlow/_facadesLogic/computeCardAnimation'
 import { DRAG_RADIANS_PER_PIXEL, TILT_PITCH_RADIANS, TILT_YAW_RADIANS } from '@flows/openingFlow/_config/openingConfig'
 import { computeOpeningPose } from '@flows/openingFlow/_facadesLogic/computeOpeningPose'
+import {
+  computeCameraPunch,
+  computeJitterScale,
+  computeLidSettleDegrees,
+  computeSeamIntensity,
+  getPopElapsedMilliseconds,
+  getRarityProfile,
+  stepScrollSway,
+} from '@flows/openingFlow/_facadesLogic/computeSceneEffects'
 import { easeInOutCubic, easeOutBack } from '@flows/openingFlow/_facadesLogic/openingEasing'
 import {
   INITIAL_OPENING_SCENE_STATE,
@@ -34,7 +43,8 @@ import {
   requestReset,
   stepDragInertia,
 } from '@flows/openingFlow/_facadesLogic/stepDragInertia'
-import type { IDragState, IOpeningSceneState } from '@flows/openingFlow/_types'
+import type { IDragState, IOpeningPose, IOpeningSceneState } from '@flows/openingFlow/_types'
+import { type IEffectsLayout, computeEffectsLayout } from '@services/sceneReference/computeEffectsLayout'
 import { LID_FULLY_OPEN_ANGLE_DEGREES, computeLidHingeTransform } from '@services/sceneReference/computeLidHingeTransform'
 
 // REFERENCE IMPLEMENTATION. The app does not run this: the 3D scene is a native module (Swift / Kotlin) that owns
@@ -69,6 +79,8 @@ export interface ISceneCommand {
   b?: number
   // blue.
   c?: number
+  // rarity level (glow colour command).
+  d?: number
 }
 
 export interface ISceneFrameCard {
@@ -76,6 +88,7 @@ export interface ISceneFrameCard {
   scale: number
   pitchRadians: number
   yawRadians: number
+  translateX: number
   translateY: number
   translateZ: number
 }
@@ -88,6 +101,12 @@ export interface ISceneFrame {
   lidTranslateZ: number
   glowStrength: number
   glowColorLinear: [number, number, number]
+  // 0 (common) ... 3 (legendary), -1 until a prize has been bought.
+  rarityLevel: number
+  // Strength of the light along the seams and the multiplier of the rarity colour for every light of the show.
+  seamIntensity: number
+  emissiveBoost: number
+  effects: IEffectsLayout
 }
 
 const MAXIMUM_FRAME_SECONDS = 0.05
@@ -100,6 +119,8 @@ export class SceneReference {
   private press: IPressState = INITIAL_PRESS_STATE
   private tilt: [number, number] = [0, 0]
   private entranceStartedAt: number | null = null
+  // Last scroll offset and time seen by a frame, and the filtered sway of the boxes.
+  private sway: [number, number, number] = [0, 0, 0]
 
   public constructor(
     private readonly viewportWidth: number,
@@ -147,7 +168,7 @@ export class SceneReference {
         this.drag = requestReset(this.drag, now)
         break
       case ESceneCommandKind.GlowColor:
-        this.scene = setGlowColor(this.scene, [a, b, command.c ?? 0])
+        this.scene = setGlowColor(this.scene, [a, b, command.c ?? 0], command.d ?? 0)
         break
       case ESceneCommandKind.Tuck:
         this.scene = startTuck(this.scene, now)
@@ -179,9 +200,27 @@ export class SceneReference {
     const dollyProgress = easeOutBack(focusLinearProgress)
     const lidProgress = getLidProgress(scene, now)
     const tuckProgress = easeInOutCubic(getTuckProgress(scene, now))
-    const anticipation = computeAnticipationEffect(getAnticipationProgress(scene, now), now)
+    const popElapsed = getPopElapsedMilliseconds(scene, now)
+    const jitterScale = computeJitterScale(popElapsed)
+    const rawAnticipation = computeAnticipationEffect(getAnticipationProgress(scene, now), now)
+    const anticipation = {
+      ...rawAnticipation,
+      jitterYawRadians: rawAnticipation.jitterYawRadians * jitterScale,
+      jitterPitchRadians: rawAnticipation.jitterPitchRadians * jitterScale,
+    }
+    const punch = computeCameraPunch(popElapsed, scene.rarityLevel)
+    const seamIntensity = computeSeamIntensity(scene, now, focusLinearProgress, tuckProgress)
     const lidAngleRadians =
-      (LID_FULLY_OPEN_ANGLE_DEGREES * (scene.lidTarget === 1 ? easeOutBack(lidProgress) : easeInOutCubic(lidProgress)) * Math.PI) / 180
+      ((LID_FULLY_OPEN_ANGLE_DEGREES * (scene.lidTarget === 1 ? easeOutBack(lidProgress) : easeInOutCubic(lidProgress)) +
+        (scene.lidTarget === 1 ? computeLidSettleDegrees(popElapsed) : 0)) *
+        Math.PI) /
+      180
+    const [lastScrollOffset, lastScrollTime, previousSway] = this.sway
+    const scrollDeltaSeconds = (now - lastScrollTime) / 1000
+    const scrollVelocity = scrollDeltaSeconds > 0 && scrollDeltaSeconds < 0.2 ? (this.scrollOffset - lastScrollOffset) / scrollDeltaSeconds : 0
+    const sway = stepScrollSway(previousSway, scrollVelocity, deltaSeconds)
+
+    this.sway = [this.scrollOffset, now, sway]
     const isAutoRotateAllowed = scene.focusTarget === 1 && scene.lidTarget === 0 && focusLinearProgress >= 1
 
     if (isDragStateAnimating(this.drag, isAutoRotateAllowed)) {
@@ -193,12 +232,15 @@ export class SceneReference {
     const pressScale = computePressScale(this.press, now)
     const entranceStart = this.entranceStartedAt ?? Number.MAX_VALUE
     const cards: ISceneFrameCard[] = []
+    const poses: IOpeningPose[] = []
+    let shakeX = 0
 
     for (let cardIndex = 0; cardIndex < this.cardCount; cardIndex += 1) {
-      const listPose = computeBoxPose({ cardIndex, scrollOffset: this.scrollOffset, viewportHeight: this.viewportHeight })
+      const baseListPose = computeBoxPose({ cardIndex, scrollOffset: this.scrollOffset, viewportHeight: this.viewportHeight })
+      const listPose = { ...baseListPose, yawRadians: baseListPose.yawRadians + sway, pitchRadians: baseListPose.pitchRadians + sway * 0.5 }
       const entranceScale = computeEntranceScale(now - entranceStart - cardIndex * ENTRANCE_STAGGER_MILLISECONDS)
       const squeeze = this.press.cardIndex === cardIndex ? pressScale : 1
-      const pose = computeOpeningPose({
+      const openingPose = computeOpeningPose({
         listPose: { ...listPose, scale: listPose.scale * entranceScale * squeeze },
         isFocusedCard: cardIndex === scene.focusedCardIndex,
         lidProgress,
@@ -216,11 +258,27 @@ export class SceneReference {
         tuckProgress,
       })
 
+      const isFocusedCard = cardIndex === scene.focusedCardIndex
+      const pose = isFocusedCard
+        ? {
+            ...openingPose,
+            scale: openingPose.scale * (1 + punch.scaleBoost),
+            translateY: openingPose.translateY + punch.shakeY * openingPose.scale,
+          }
+        : openingPose
+
+      poses.push(pose)
+
+      if (isFocusedCard) {
+        shakeX = punch.shakeX * openingPose.scale
+      }
+
       cards.push({
         isVisible: pose.isVisible,
         scale: pose.scale,
         pitchRadians: pose.pitchRadians,
         yawRadians: pose.yawRadians,
+        translateX: isFocusedCard ? punch.shakeX * openingPose.scale : 0,
         translateY: pose.translateY,
         translateZ: pose.translateZ,
       })
@@ -237,6 +295,10 @@ export class SceneReference {
       lidTranslateZ: hinge.translate[2],
       glowStrength: computeGlowStrength(lidProgress, now),
       glowColorLinear: scene.glowColorLinear,
+      rarityLevel: scene.rarityLevel,
+      seamIntensity,
+      emissiveBoost: getRarityProfile(scene.rarityLevel).emissiveBoost,
+      effects: computeEffectsLayout({ scene, nowMilliseconds: now, focusProgress, tuckProgress, seamIntensity, poses, shakeX }),
     }
   }
 }

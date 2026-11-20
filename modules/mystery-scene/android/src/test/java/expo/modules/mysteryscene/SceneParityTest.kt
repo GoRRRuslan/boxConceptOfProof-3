@@ -1,5 +1,6 @@
 package expo.modules.mysteryscene
 
+import expo.modules.mysteryscene.math.EffectItem
 import expo.modules.mysteryscene.math.SceneController
 import java.io.File
 import org.json.JSONArray
@@ -24,6 +25,7 @@ class SceneParityTest {
     val a = command.optDouble("a", 0.0)
     val b = command.optDouble("b", 0.0)
     val c = command.optDouble("c", 0.0)
+    val d = command.optDouble("d", 0.0)
     when (val kind = command.getString("kind")) {
       "modelReady" -> controller.markModelReady(now)
       "cardCount" -> controller.setCardCount(a.toInt(), now)
@@ -33,7 +35,7 @@ class SceneParityTest {
       "focus" -> controller.focus(a.toInt(), now)
       "close" -> controller.close(now)
       "openLid" -> controller.openLid(now)
-      "glowColor" -> controller.setGlowColor(listOf(a, b, c), now)
+      "glowColor" -> controller.setGlowColor(listOf(a, b, c), d, now)
       "tuck" -> controller.tuck(now)
       "dragBy" -> controller.dragBy(a, b, now)
       "dragEnd" -> controller.dragEnd(a, b, now)
@@ -42,6 +44,20 @@ class SceneParityTest {
       "tilt" -> controller.setTilt(a, b, now)
       else -> throw AssertionError("unknown command $kind")
     }
+  }
+
+  private fun compareItem(label: String, expected: JSONObject, actual: EffectItem, tolerance: Double) {
+    assertEquals(label, expected.getDouble("x"), actual.x, tolerance)
+    assertEquals(label, expected.getDouble("y"), actual.y, tolerance)
+    assertEquals(label, expected.getDouble("z"), actual.z, tolerance)
+    assertEquals(label, expected.getDouble("scaleX"), actual.scaleX, tolerance)
+    assertEquals(label, expected.getDouble("scaleY"), actual.scaleY, tolerance)
+    assertEquals(label, expected.getDouble("alpha"), actual.alpha, tolerance)
+  }
+
+  private fun compareItems(label: String, expected: JSONArray, actual: List<EffectItem>, tolerance: Double) {
+    assertEquals(label, expected.length(), actual.size)
+    for (index in 0 until expected.length()) compareItem("$label #$index", expected.getJSONObject(index), actual[index], tolerance)
   }
 
   @Test
@@ -80,6 +96,16 @@ class SceneParityTest {
         val glow: JSONArray = expected.getJSONArray("glowColorLinear")
         for (index in 0 until glow.length()) assertEquals(label, glow.getDouble(index), actual.glowColorLinear[index], tolerance)
 
+        assertEquals(label, expected.getDouble("rarityLevel"), actual.rarityLevel, tolerance)
+        assertEquals(label, expected.getDouble("seamIntensity"), actual.seamIntensity, tolerance)
+        assertEquals(label, expected.getDouble("emissiveBoost"), actual.emissiveBoost, tolerance)
+        val effects = expected.getJSONObject("effects")
+        compareItems(label + " aura", effects.getJSONArray("auras"), actual.effects.auras, tolerance)
+        compareItems(label + " spark", effects.getJSONArray("sparks"), actual.effects.sparks, tolerance)
+        compareItems(label + " dust", effects.getJSONArray("dust"), actual.effects.dust, tolerance)
+        compareItem(label + " shaft", effects.getJSONObject("shaft"), actual.effects.shaft, tolerance)
+        compareItems(label + " ring", effects.getJSONArray("rings"), actual.effects.rings, tolerance)
+
         val cards = expected.getJSONArray("cards")
         assertEquals(label, cards.length(), actual.cards.size)
         for (index in 0 until cards.length()) {
@@ -90,6 +116,7 @@ class SceneParityTest {
           assertEquals(cardLabel, card.getDouble("scale"), actualCard.scale, tolerance)
           assertEquals(cardLabel, card.getDouble("pitchRadians"), actualCard.pitchRadians, tolerance)
           assertEquals(cardLabel, card.getDouble("yawRadians"), actualCard.yawRadians, tolerance)
+          assertEquals(cardLabel, card.getDouble("translateX"), actualCard.translateX, tolerance)
           assertEquals(cardLabel, card.getDouble("translateY"), actualCard.translateY, tolerance)
           assertEquals(cardLabel, card.getDouble("translateZ"), actualCard.translateZ, tolerance)
         }

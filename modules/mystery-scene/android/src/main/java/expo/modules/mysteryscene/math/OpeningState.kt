@@ -17,6 +17,8 @@ data class OpeningSceneState(
   val tuckFromProgress: Double = 0.0,
   val tuckStartedAtMilliseconds: Double = 0.0,
   val glowColorLinear: List<Double> = listOf(1.0, 1.0, 1.0),
+  /** 0 (common) ... 3 (legendary); -1 until a prize has been bought (the box is "armed" from then on). */
+  val rarityLevel: Double = -1.0,
 )
 
 fun getFocusProgress(state: OpeningSceneState, now: Double): Double = computeAnimatedProgress(
@@ -46,7 +48,7 @@ fun computeGlowStrength(lidProgress: Double, now: Double): Double {
 }
 
 fun startFocus(state: OpeningSceneState, cardIndex: Int, now: Double) = state.copy(
-  focusedCardIndex = cardIndex, focusTarget = 1.0, focusFromProgress = getFocusProgress(state, now), focusStartedAtMilliseconds = now,
+  focusedCardIndex = cardIndex, rarityLevel = -1.0, focusTarget = 1.0, focusFromProgress = getFocusProgress(state, now), focusStartedAtMilliseconds = now,
   lidTarget = 0.0, lidFromProgress = 0.0, lidStartedAtMilliseconds = now, openStartedAtMilliseconds = 0.0,
   tuckTarget = 0.0, tuckFromProgress = 0.0, tuckStartedAtMilliseconds = now,
 )
@@ -62,7 +64,8 @@ fun startLidOpen(state: OpeningSceneState, now: Double) = state.copy(
   lidStartedAtMilliseconds = now + SceneConfig.ANTICIPATION_DURATION_MILLISECONDS, openStartedAtMilliseconds = now,
 )
 
-fun withGlowColor(state: OpeningSceneState, glowColorLinear: List<Double>) = state.copy(glowColorLinear = glowColorLinear)
+fun withGlowColor(state: OpeningSceneState, glowColorLinear: List<Double>, rarityLevel: Double) =
+  state.copy(glowColorLinear = glowColorLinear, rarityLevel = rarityLevel)
 
 fun startTuck(state: OpeningSceneState, now: Double) = state.copy(
   tuckTarget = 1.0, tuckFromProgress = getTuckProgress(state, now), tuckStartedAtMilliseconds = now,

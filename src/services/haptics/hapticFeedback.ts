@@ -10,6 +10,11 @@ export const hapticFeedback = {
   selection: () => Haptics.selectionAsync(),
   // The box starts to tremble.
   anticipation: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light),
+  // The box trembles faster and harder while it charges: a pulse whose strength is 0 (light) ... 1 (heavy).
+  anticipationPulse: (strength: number) =>
+    Haptics.impactAsync(
+      strength > 0.75 ? Haptics.ImpactFeedbackStyle.Heavy : strength > 0.4 ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light,
+    ),
   // The better the prize the more heavy taps follow the success tap.
   rarityReveal: (impactCount: number) => {
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)

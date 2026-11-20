@@ -5,6 +5,7 @@ public struct CardFrame: Equatable {
   public var scale: Double
   public var pitchRadians: Double
   public var yawRadians: Double
+  public var translateX: Double
   public var translateY: Double
   public var translateZ: Double
 }
@@ -18,6 +19,10 @@ public struct SceneFrame: Equatable {
   public var lidTranslateZ: Double
   public var glowStrength: Double
   public var glowColorLinear: [Double]
+  public var rarityLevel: Double
+  public var seamIntensity: Double
+  public var emissiveBoost: Double
+  public var effects: EffectsLayout
 }
 
 // The whole state machine of the scene: owns the scroll offset, the opening state, the drag physics and the
@@ -32,6 +37,8 @@ public final class SceneController {
   private var pressState = PressState()
   private var tilt: (Double, Double) = (0, 0)
   private var entranceStartedAt: Double?
+  // Last scroll offset and time a frame saw, and the filtered sway of the boxes.
+  private var sway: (Double, Double, Double) = (0, 0, 0)
   private var wakeUntilMilliseconds = 0.0
 
   // How long the scene keeps drawing after a command whose effect has no explicit animation.
@@ -90,8 +97,8 @@ public final class SceneController {
     hold(now, Self.commandHoldMilliseconds)
   }
 
-  public func setGlowColor(_ color: [Double], now: Double) {
-    openingScene = withGlowColor(openingScene, color)
+  public func setGlowColor(_ color: [Double], rarityLevel: Double, now: Double) {
+    openingScene = withGlowColor(openingScene, color, rarityLevel)
     hold(now, Self.commandHoldMilliseconds)
   }
 
@@ -145,8 +152,21 @@ public final class SceneController {
     let dollyProgress = easeOutBack(focusLinearProgress)
     let lidProgress = getLidProgress(scene, now)
     let tuckProgress = easeInOutCubic(getTuckProgress(scene, now))
-    let anticipation = computeAnticipationEffect(getAnticipationProgress(scene, now), now)
-    let lidAngleRadians = computeLidAngleRadians(lidProgress: lidProgress, isOpening: scene.lidTarget == 1)
+    let popElapsed = getPopElapsedMilliseconds(scene, now)
+    let jitterScale = computeJitterScale(popElapsed)
+    var anticipation = computeAnticipationEffect(getAnticipationProgress(scene, now), now)
+    anticipation.jitterYawRadians *= jitterScale
+    anticipation.jitterPitchRadians *= jitterScale
+    let punch = computeCameraPunch(popElapsed, scene.rarityLevel)
+    let seamIntensity = computeSeamIntensity(scene, now, focusLinearProgress, tuckProgress)
+    let lidAngleRadians =
+      computeLidAngleRadians(lidProgress: lidProgress, isOpening: scene.lidTarget == 1)
+      + (scene.lidTarget == 1 ? computeLidSettleDegrees(popElapsed) * Double.pi / 180 : 0)
+
+    let scrollDeltaSeconds = (now - sway.1) / 1000
+    let scrollVelocity = scrollDeltaSeconds > 0 && scrollDeltaSeconds < 0.2 ? (scrollOffset - sway.0) / scrollDeltaSeconds : 0
+    let swayNow = stepScrollSway(sway.2, scrollVelocity, deltaSeconds)
+    sway = (scrollOffset, now, swayNow)
 
     let isAutoRotateAllowed = scene.focusTarget == 1 && scene.lidTarget == 0 && focusLinearProgress >= 1
 
@@ -161,6 +181,8 @@ public final class SceneController {
     let entranceStart = entranceStartedAt ?? Double.greatestFiniteMagnitude
 
     var cards: [CardFrame] = []
+    var poses: [OpeningPose] = []
+    var shakeX = 0.0
     cards.reserveCapacity(cardCount)
 
     for cardIndex in 0..<cardCount {
@@ -169,17 +191,28 @@ public final class SceneController {
         now - entranceStart - Double(cardIndex) * SceneConfig.entranceStaggerMilliseconds)
       let squeeze = pressState.cardIndex == cardIndex ? pressScale : 1
       listPose.scale = listPose.scale * entranceScale * squeeze
-      let pose = computeOpeningPose(
+      listPose.yawRadians += swayNow
+      listPose.pitchRadians += swayNow * 0.5
+      let openingPose = computeOpeningPose(
         OpeningPoseInput(
           listPose: listPose, isFocusedCard: cardIndex == scene.focusedCardIndex, lidProgress: lidProgress,
           focusProgress: focusProgress, dollyProgress: dollyProgress, viewportWidth: viewportWidth,
           viewportHeight: viewportHeight, dragYawRadians: drag.yawRadians, dragPitchRadians: drag.pitchRadians,
           zoom: drag.zoom, autoYawRadians: drag.autoYawRadians, tiltYawRadians: tiltX * SceneConfig.tiltYawRadians,
           tiltPitchRadians: tiltY * SceneConfig.tiltPitchRadians, anticipation: anticipation, tuckProgress: tuckProgress))
+      let isFocusedCard = cardIndex == scene.focusedCardIndex
+      var pose = openingPose
+      if isFocusedCard {
+        pose.scale = openingPose.scale * (1 + punch.scaleBoost)
+        pose.translateY = openingPose.translateY + punch.shakeY * openingPose.scale
+        shakeX = punch.shakeX * openingPose.scale
+      }
+      poses.append(pose)
       cards.append(
         CardFrame(
           isVisible: pose.isVisible, scale: pose.scale, pitchRadians: pose.pitchRadians, yawRadians: pose.yawRadians,
-          translateY: pose.translateY, translateZ: pose.translateZ))
+          translateX: isFocusedCard ? punch.shakeX * openingPose.scale : 0, translateY: pose.translateY,
+          translateZ: pose.translateZ))
     }
 
     let hinge = computeLidHingeTransform(angleDegrees: lidAngleRadians * 180 / Double.pi)
@@ -189,7 +222,11 @@ public final class SceneController {
     return SceneFrame(
       cards: cards, focusedCardIndex: hasFocusedCard ? scene.focusedCardIndex : -1,
       lidAngleRadians: lidAngleRadians, lidTranslateY: hinge.translateY, lidTranslateZ: hinge.translateZ,
-      glowStrength: glowStrength, glowColorLinear: scene.glowColorLinear)
+      glowStrength: glowStrength, glowColorLinear: scene.glowColorLinear, rarityLevel: scene.rarityLevel,
+      seamIntensity: seamIntensity, emissiveBoost: getRarityProfile(scene.rarityLevel).emissiveBoost,
+      effects: computeEffectsLayout(
+        scene: scene, now: now, focusProgress: focusProgress, tuckProgress: tuckProgress, seamIntensity: seamIntensity,
+        poses: poses, shakeX: shakeX))
   }
 
   // True while something moves (or is about to): the render loop keeps running; otherwise the GPU rests.
@@ -210,6 +247,13 @@ public final class SceneController {
 
     // Inspecting a closed box: it turns slowly by itself, the scene never rests.
     if scene.focusTarget == 1 && scene.lidTarget == 0 && getFocusProgress(scene, now) >= 1 { return true }
+    // A bought box breathes light from its seams; the burst, shock waves and light play out after the lid is let go.
+    if scene.focusTarget == 1 && scene.rarityLevel >= 0 && scene.lidTarget == 0 && getFocusProgress(scene, now) >= 1 { return true }
+    if scene.lidTarget == 1 && scene.lidStartedAtMilliseconds > 0
+      && now < scene.lidStartedAtMilliseconds + EffectsConfig.burstLifetimeMilliseconds
+    {
+      return true
+    }
     // The opened box pulses with light until it is put away.
     if scene.focusedCardIndex >= 0 && getLidProgress(scene, now) > 0 && getTuckProgress(scene, now) < 1 { return true }
 

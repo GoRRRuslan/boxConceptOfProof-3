@@ -18,6 +18,7 @@ jest.mock('react-native-gesture-handler', () => ({
   usePanGesture: () => ({}),
   usePinchGesture: () => ({}),
   useTapGesture: () => ({}),
+  useLongPressGesture: () => ({}),
   useSimultaneousGestures: () => ({}),
 }))
 

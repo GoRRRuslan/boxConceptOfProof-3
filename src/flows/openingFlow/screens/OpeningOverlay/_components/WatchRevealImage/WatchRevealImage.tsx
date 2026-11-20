@@ -7,11 +7,18 @@ import { makeStyles } from '@flows/openingFlow/screens/OpeningOverlay/_component
 
 interface IWatchRevealImageProps {
   source: ImageSourcePropType
+  tilt?: { getBlocking: () => [number, number] }
 }
 
-export const WatchRevealImage = ({ source }: IWatchRevealImageProps) => {
+export const WatchRevealImage = ({ source, tilt }: IWatchRevealImageProps) => {
   const styles = useMemo(() => makeStyles(), [])
-  const { animatedStyle } = useFacadeWatchReveal()
+  const { animatedStyle, glintStyle } = useFacadeWatchReveal({ tilt })
 
-  return <Animated.Image source={source} style={[styles.image, animatedStyle]} resizeMode="contain" testID="revealedWatchImage" />
+  return (
+    <Animated.View style={[styles.container, animatedStyle]} testID="revealedWatchImage">
+      <Animated.Image source={source} style={styles.image} resizeMode="contain" />
+      {/* A white copy of the watch that flashes now and then: the watch catches the light. */}
+      <Animated.Image source={source} style={[styles.image, styles.glint, glintStyle]} resizeMode="contain" tintColor="#FFFFFF" />
+    </Animated.View>
+  )
 }

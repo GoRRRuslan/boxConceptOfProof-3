@@ -2,6 +2,7 @@ import type { ImageSourcePropType } from 'react-native'
 import type { useSimultaneousGestures } from 'react-native-gesture-handler'
 
 import type { EBoxIdentifier } from '@networking/api/MysteryBoxApi/_types'
+import type { ITiltCell } from '@services/tiltCell/createTiltCell'
 
 export enum EOpeningPhase {
   // The list is shown, no box is selected.
@@ -50,6 +51,9 @@ export interface IOpeningSceneState {
   tuckStartedAtMilliseconds: number
   // Colour (linear RGB) of the light inside the box once it is open; depends on the rarity of the prize.
   glowColorLinear: [number, number, number]
+  // Rarity of the bought prize as 0 (common) ... 3 (legendary); -1 until a prize has been bought. Drives the size of the show and
+  // tells the scene that the box is "armed" (its seams breathe).
+  rarityLevel: number
 }
 
 // Rotation of the focused box by the user's finger, with inertia after release.
@@ -119,6 +123,8 @@ export interface IOpeningFacade {
   reveal: IOpeningReveal | null
   // Pan (turn) + pinch (zoom) + double tap (reset), all at once.
   gesture: ReturnType<typeof useSimultaneousGestures>
+  // Device tilt, each axis -1..1 (the native scene gets it too; the watch of the reveal slides against it).
+  tilt: ITiltCell<[number, number]>
   handleCardPress: (boxIdentifier: EBoxIdentifier) => void
   handleBackPress: () => void
 }

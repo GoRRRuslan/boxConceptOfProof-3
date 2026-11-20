@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react-native'
 
+import { createTiltCell } from '@services/tiltCell/createTiltCell'
 import { MysteryScene } from '@mysteryScene'
 import { useFacadeDeviceTilt } from '@flows/openingFlow/_facades/useFacadeDeviceTilt'
 
@@ -27,6 +28,8 @@ const flush = () =>
   })
 
 describe('useFacadeDeviceTilt', () => {
+  const tilt = createTiltCell<[number, number]>([0, 0])
+
   beforeEach(() => {
     mockListener = undefined
 
@@ -39,7 +42,7 @@ describe('useFacadeDeviceTilt', () => {
 
   it('does nothing while no box is open', async () => {
     await renderHook(() => {
-      useFacadeDeviceTilt({ isActive: false })
+      useFacadeDeviceTilt({ isActive: false, tilt })
     })
 
     await flush()
@@ -50,7 +53,7 @@ describe('useFacadeDeviceTilt', () => {
   it('follows the tilt of the phone, relative to how it was held at the start, smoothed and within -1..1', async () => {
 
     await renderHook(() => {
-      useFacadeDeviceTilt({ isActive: true })
+      useFacadeDeviceTilt({ isActive: true, tilt })
     })
 
     await flush()
@@ -80,7 +83,7 @@ describe('useFacadeDeviceTilt', () => {
   it('stops listening and resets the tilt when the box is closed', async () => {
     const { rerender } = await renderHook(
       (isActive: boolean) => {
-        useFacadeDeviceTilt({ isActive })
+        useFacadeDeviceTilt({ isActive, tilt })
       },
       { initialProps: true },
     )
@@ -98,7 +101,7 @@ describe('useFacadeDeviceTilt', () => {
     mockIsAvailable = false
 
     await renderHook(() => {
-      useFacadeDeviceTilt({ isActive: true })
+      useFacadeDeviceTilt({ isActive: true, tilt })
     })
 
     await flush()
@@ -109,7 +112,7 @@ describe('useFacadeDeviceTilt', () => {
   it('ignores readings without a rotation (an emulator without a motion sensor) instead of crashing', async () => {
 
     await renderHook(() => {
-      useFacadeDeviceTilt({ isActive: true })
+      useFacadeDeviceTilt({ isActive: true, tilt })
     })
 
     await flush()

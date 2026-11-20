@@ -122,7 +122,13 @@ describe('openingSceneState', () => {
     })
 
     it('remembers the colour of the prize', () => {
-      expect(setGlowColor(INITIAL_OPENING_SCENE_STATE, [1, 0.5, 0]).glowColorLinear).toEqual([1, 0.5, 0])
+      const armed = setGlowColor(INITIAL_OPENING_SCENE_STATE, [1, 0.5, 0], 2)
+
+      expect(armed.glowColorLinear).toEqual([1, 0.5, 0])
+
+      expect(armed.rarityLevel).toBe(2)
+
+      expect(startFocus(armed, 1, 10).rarityLevel).toBe(-1)
     })
   })
 

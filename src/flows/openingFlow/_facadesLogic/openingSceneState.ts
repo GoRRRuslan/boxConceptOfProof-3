@@ -26,6 +26,7 @@ export const INITIAL_OPENING_SCENE_STATE: IOpeningSceneState = {
   tuckFromProgress: 0,
   tuckStartedAtMilliseconds: 0,
   glowColorLinear: [1, 1, 1],
+  rarityLevel: -1,
 }
 
 // Linear 0..1 progress of the "box flies to the centre" animation at `nowMilliseconds`.
@@ -118,6 +119,7 @@ export const computeGlowStrength = (lidProgress: number, nowMilliseconds: number
 export const startFocus = (state: IOpeningSceneState, cardIndex: number, nowMilliseconds: number): IOpeningSceneState => ({
   ...state,
   focusedCardIndex: cardIndex,
+  rarityLevel: -1,
   focusTarget: 1,
   focusFromProgress: getFocusProgress(state, nowMilliseconds),
   focusStartedAtMilliseconds: nowMilliseconds,
@@ -154,9 +156,14 @@ export const startLidOpen = (state: IOpeningSceneState, nowMilliseconds: number)
   openStartedAtMilliseconds: nowMilliseconds,
 })
 
-export const setGlowColor = (state: IOpeningSceneState, glowColorLinear: [number, number, number]): IOpeningSceneState => ({
+export const setGlowColor = (
+  state: IOpeningSceneState,
+  glowColorLinear: [number, number, number],
+  rarityLevel: number,
+): IOpeningSceneState => ({
   ...state,
   glowColorLinear,
+  rarityLevel,
 })
 
 // The prize is on screen: the opened box is put away (shrinks and sinks), from wherever it is now.

@@ -2,9 +2,12 @@ import { DeviceMotion } from 'expo-sensors'
 import { useEffect } from 'react'
 
 import { MysteryScene } from '@mysteryScene'
+import type { ITiltCell } from '@services/tiltCell/createTiltCell'
 
 interface IUseFacadeDeviceTiltParams {
   isActive: boolean
+  // The same tilt, for the JavaScript side (the watch of the reveal).
+  tilt: ITiltCell<[number, number]>
 }
 
 const UPDATE_INTERVAL_MILLISECONDS = 33
@@ -16,7 +19,7 @@ const clampToUnit = (value: number): number => Math.min(1, Math.max(-1, value))
 
 // While a box is open the device tilt (gyroscope) is sent to the native scene, each axis -1..1, relative to how
 // the phone was held when the box opened and smoothed. Without a motion sensor nothing happens.
-export const useFacadeDeviceTilt = ({ isActive }: IUseFacadeDeviceTiltParams) => {
+export const useFacadeDeviceTilt = ({ isActive, tilt }: IUseFacadeDeviceTiltParams) => {
   // ------------------- Side effects ----------------------- //
   useEffect(() => {
     if (!isActive) {
@@ -51,6 +54,8 @@ export const useFacadeDeviceTilt = ({ isActive }: IUseFacadeDeviceTiltParams) =>
         smoothedY += (clampToUnit((rotation.beta - baselineBeta) / FULL_TILT_RADIANS) - smoothedY) * SMOOTHING
 
         MysteryScene.setTilt(smoothedX, smoothedY)
+
+        tilt.setBlocking([smoothedX, smoothedY])
       })
     }
 
@@ -62,6 +67,8 @@ export const useFacadeDeviceTilt = ({ isActive }: IUseFacadeDeviceTiltParams) =>
       subscription?.remove()
 
       MysteryScene.setTilt(0, 0)
+
+      tilt.setBlocking([0, 0])
     }
-  }, [isActive])
+  }, [isActive, tilt])
 }

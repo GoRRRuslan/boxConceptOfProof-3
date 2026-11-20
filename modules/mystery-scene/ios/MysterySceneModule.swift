@@ -21,8 +21,8 @@ public class MysterySceneModule: Module {
     Function("focus") { (cardIndex: Int) in SceneHost.shared.command { $0.focus(cardIndex: cardIndex, now: $1) } }
     Function("closeBox") { SceneHost.shared.command { $0.close(now: $1) } }
     Function("openLid") { SceneHost.shared.command { $0.openLid(now: $1) } }
-    Function("setGlowColor") { (red: Double, green: Double, blue: Double) in
-      SceneHost.shared.command { $0.setGlowColor([red, green, blue], now: $1) }
+    Function("setGlowColor") { (red: Double, green: Double, blue: Double, rarityLevel: Double) in
+      SceneHost.shared.command { $0.setGlowColor([red, green, blue], rarityLevel: rarityLevel, now: $1) }
     }
     Function("tuck") { SceneHost.shared.command { $0.tuck(now: $1) } }
     Function("dragBy") { (deltaX: Double, deltaY: Double) in

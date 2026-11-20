@@ -28,6 +28,8 @@ export const useSharedValue = animatedValue
 
 export const useAnimatedStyle = () => ({})
 
+export const useFrameCallback = () => undefined
+
 export const withTiming = <T,>(value: T) => value
 
 export const withSpring = <T,>(value: T) => value

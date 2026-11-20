@@ -29,8 +29,9 @@ jest.mock('react-native-gesture-handler', () => ({
   usePanGesture: (config: unknown) => config,
   usePinchGesture: (config: unknown) => config,
   useTapGesture: (config: unknown) => config,
-  // The composed gesture is just the three configs, so the tests can call each callback.
-  useSimultaneousGestures: (pan: unknown, pinch: unknown, tap: unknown) => ({ pan, pinch, tap }),
+  useLongPressGesture: (config: unknown) => config,
+  // The composed gesture is just the configs, so the tests can call each callback.
+  useSimultaneousGestures: (pan: unknown, pinch: unknown, tap: unknown, hold: unknown) => ({ pan, pinch, tap, hold }),
 }))
 
 jest.mock('expo-sensors', () => ({
@@ -58,6 +59,7 @@ jest.mock('@services/haptics/hapticFeedback', () => ({
     lidOpening: jest.fn(),
     selection: jest.fn(),
     anticipation: jest.fn(),
+    anticipationPulse: jest.fn(),
     rarityReveal: jest.fn(),
   },
 }))
@@ -463,7 +465,7 @@ describe('useOpeningFacade', () => {
       await buyAndGetReady(result)
 
       // The first purchase is a Casio: a common prize with a soft blue-grey glow.
-      expect(MysteryScene.setGlowColor).toHaveBeenCalledWith(0.35, 0.5, 0.58)
+      expect(MysteryScene.setGlowColor).toHaveBeenCalledWith(0.35, 0.5, 0.58, 0)
 
       jest.useRealTimers()
     })

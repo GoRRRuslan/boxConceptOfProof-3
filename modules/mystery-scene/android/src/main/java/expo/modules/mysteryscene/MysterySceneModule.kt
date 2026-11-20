@@ -35,8 +35,8 @@ class MysterySceneModule : Module() {
     Function("focus") { cardIndex: Int -> SceneHost.command { c, now -> c.focus(cardIndex, now) } }
     Function("closeBox") { SceneHost.command { c, now -> c.close(now) } }
     Function("openLid") { SceneHost.command { c, now -> c.openLid(now) } }
-    Function("setGlowColor") { red: Double, green: Double, blue: Double ->
-      SceneHost.command { c, now -> c.setGlowColor(listOf(red, green, blue), now) }
+    Function("setGlowColor") { red: Double, green: Double, blue: Double, rarityLevel: Double ->
+      SceneHost.command { c, now -> c.setGlowColor(listOf(red, green, blue), rarityLevel, now) }
     }
     Function("tuck") { SceneHost.command { c, now -> c.tuck(now) } }
     Function("dragBy") { deltaX: Double, deltaY: Double -> SceneHost.command { c, now -> c.dragBy(deltaX, deltaY, now) } }

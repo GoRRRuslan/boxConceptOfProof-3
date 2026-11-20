@@ -18,6 +18,8 @@ import com.google.android.filament.gltfio.FilamentInstance
 import com.google.android.filament.gltfio.ResourceLoader
 import com.google.android.filament.gltfio.UbershaderProvider
 import com.google.android.filament.utils.KTX1Loader
+import expo.modules.mysteryscene.math.EffectItem
+import expo.modules.mysteryscene.math.EffectsConfig
 import expo.modules.mysteryscene.math.SceneConfig
 import expo.modules.mysteryscene.math.SceneFrame
 import java.nio.ByteBuffer
@@ -65,6 +67,7 @@ class FilamentBoxScene(private val context: Context) {
     val lidEntities: List<Int>,
     val glowTargets: List<Pair<Int, Int>>,
     val bodyTargets: List<Pair<Int, Int>>,
+    val seamTargets: List<Pair<Int, Int>>,
   ) {
     var isInScene = false
   }
@@ -73,9 +76,23 @@ class FilamentBoxScene(private val context: Context) {
   private var lastFocusedCardIndex = -1
   private val appliedGlowStrength = HashMap<Int, Double>()
   private val matrix = FloatArray(16)
+  private val appliedSeamIntensity = HashMap<Int, Double>()
+
+  // The show around the boxes: pools of flat soft shapes (a disc, a ring, a curtain of light) that face the camera. The scene
+  // controller computes where each one is (EffectsLayout); this class only places and tints them. Nothing is created per frame.
+  private class EffectPool(val asset: FilamentAsset, val roots: List<Int>, val renderables: List<Int>)
+
+  private var discPool: EffectPool? = null
+  private var ringPool: EffectPool? = null
+  private var shaftPool: EffectPool? = null
+  private var auraColors: List<List<Double>> = emptyList()
+  private val appliedAuraKey = HashMap<Int, List<Double>>()
+  private var appliedSparkTintLevel = -2.0
+  private var appliedShaftTintLevel = -2.0
+  private var appliedRingTintLevel = -2.0
 
   private enum class PartName(val value: String) {
-    BASE("Shell_Base"), LID("Shell_Lid"), WORDMARK("Shell_Wordmark"), CUSHION("Shell_Fitted_Cushion")
+    BASE("Shell_Base"), LID("Shell_Lid"), WORDMARK("Shell_Wordmark"), CUSHION("Shell_Fitted_Cushion"), SEAM("Shell_Seam")
   }
 
   init {
@@ -204,6 +221,8 @@ class FilamentBoxScene(private val context: Context) {
         }
       }
     }
+    auraColors = looks.map { it.colorLinear }
+    ensureEffectPools(looks.size)
     looks.forEachIndexed { index, look ->
       val box = instances.getOrNull(index) ?: return@forEachIndexed
       box.bodyTargets.forEach { (entity, primitive) ->
@@ -217,10 +236,56 @@ class FilamentBoxScene(private val context: Context) {
     }
   }
 
+  // Loads an effect model once and makes `count` instances of it (they neither cast nor receive shadows).
+  private fun createEffectPool(fileName: String, count: Int): EffectPool? {
+    val bytes = context.assets.open(fileName).use { ByteBuffer.wrap(it.readBytes()) }
+    val created = arrayOfNulls<FilamentInstance>(count)
+    val newAsset = assetLoader.createInstancedAsset(bytes, created) ?: return null
+    resourceLoader.loadResources(newAsset)
+    newAsset.releaseSourceData()
+    scene.addEntities(newAsset.entities)
+    val renderableManager = engine.renderableManager
+    newAsset.entities.forEach { entity ->
+      val renderable = renderableManager.getInstance(entity)
+      if (renderable != 0) {
+        renderableManager.setCastShadows(renderable, false)
+        renderableManager.setReceiveShadows(renderable, false)
+        // Drawn after every opaque surface.
+        renderableManager.setPriority(renderable, 7)
+      }
+    }
+    val instancesOfPool = created.filterNotNull()
+    return EffectPool(
+      newAsset,
+      instancesOfPool.map { it.root },
+      instancesOfPool.map { instance -> instance.entities.first { newAsset.getName(it)?.startsWith("Fx_") == true } },
+    )
+  }
+
+  private fun destroyEffectPool(pool: EffectPool?) {
+    pool ?: return
+    scene.removeEntities(pool.asset.entities)
+    assetLoader.destroyAsset(pool.asset)
+  }
+
+  // The disc pool holds the burst, the dust and one aura per card; it is rebuilt when the card count changes.
+  private fun ensureEffectPools(cardCount: Int) {
+    val discCount = EffectsConfig.BURST_PARTICLE_POOL_SIZE + EffectsConfig.DUST_POOL_SIZE + cardCount
+    if (discPool?.roots?.size != discCount) {
+      destroyEffectPool(discPool)
+      discPool = if (cardCount > 0) createEffectPool("fx_disc.glb", discCount) else null
+      appliedAuraKey.clear()
+      appliedSparkTintLevel = -2.0
+    }
+    if (ringPool == null) ringPool = createEffectPool("fx_ring.glb", EffectsConfig.RING_POOL_SIZE)
+    if (shaftPool == null) shaftPool = createEffectPool("fx_shaft.glb", 1)
+  }
+
   private fun describe(owner: FilamentAsset, instance: FilamentInstance): BoxInstance {
     val lids = ArrayList<Int>()
     val glow = ArrayList<Pair<Int, Int>>()
     val body = ArrayList<Pair<Int, Int>>()
+    val seam = ArrayList<Pair<Int, Int>>()
     for (entity in instance.entities) {
       when (owner.getName(entity)) {
         PartName.BASE.value -> body.add(entity to 0)
@@ -231,9 +296,10 @@ class FilamentBoxScene(private val context: Context) {
         }
         PartName.WORDMARK.value -> lids.add(entity)
         PartName.CUSHION.value -> glow.add(entity to 0)
+        PartName.SEAM.value -> seam.add(entity to 0)
       }
     }
-    return BoxInstance(instance, instance.entities, instance.root, lids, glow, body)
+    return BoxInstance(instance, instance.entities, instance.root, lids, glow, body, seam)
   }
 
   private fun materialInstance(entity: Int, primitive: Int): MaterialInstance? {
@@ -266,7 +332,7 @@ class FilamentBoxScene(private val context: Context) {
       matrix[4] = (sinYaw * sinPitch * scale).toFloat(); matrix[5] = (cosPitch * scale).toFloat(); matrix[6] = (cosYaw * sinPitch * scale).toFloat(); matrix[7] = 0f
       matrix[8] = (sinYaw * cosPitch * scale).toFloat(); matrix[9] = (-sinPitch * scale).toFloat(); matrix[10] = (cosYaw * cosPitch * scale).toFloat(); matrix[11] = 0f
       val centre = -SceneConfig.BOX_CENTER_HEIGHT_UNITS
-      matrix[12] = (matrix[4] * centre).toFloat()
+      matrix[12] = (matrix[4] * centre + card.translateX).toFloat()
       matrix[13] = (matrix[5] * centre + card.translateY).toFloat()
       matrix[14] = (matrix[6] * centre + card.translateZ).toFloat()
       matrix[15] = 1f
@@ -277,11 +343,91 @@ class FilamentBoxScene(private val context: Context) {
     if (lastFocusedCardIndex != frame.focusedCardIndex) {
       setLid(lastFocusedCardIndex, 0.0, 0.0, 0.0)
       setGlow(lastFocusedCardIndex, 0.0, listOf(0.0, 0.0, 0.0))
+      setSeam(lastFocusedCardIndex, 0.0, listOf(0.0, 0.0, 0.0), 1.0)
       lastFocusedCardIndex = frame.focusedCardIndex
     }
     if (frame.focusedCardIndex >= 0) {
       setLid(frame.focusedCardIndex, frame.lidAngleRadians, frame.lidTranslateY, frame.lidTranslateZ)
       setGlow(frame.focusedCardIndex, frame.glowStrength, frame.glowColorLinear)
+      setSeam(frame.focusedCardIndex, frame.seamIntensity, frame.glowColorLinear, frame.emissiveBoost)
+    }
+    applyEffects(frame)
+  }
+
+  // The coloured trim of the seam lights up in the colour of the prize (breathing, charging, flashing).
+  private fun setSeam(cardIndex: Int, intensity: Double, color: List<Double>, boost: Double) {
+    val box = instances.getOrNull(cardIndex) ?: return
+    val previous = appliedSeamIntensity[cardIndex]
+    if (previous != null && kotlin.math.abs(previous - intensity) <= 0.004) return
+    appliedSeamIntensity[cardIndex] = intensity
+    val strength = intensity * boost
+    box.seamTargets.forEach { (entity, primitive) ->
+      materialInstance(entity, primitive)?.setParameter(
+        "emissiveFactor", (color[0] * strength).toFloat(), (color[1] * strength).toFloat(), (color[2] * strength).toFloat(), 1f,
+      )
+    }
+  }
+
+  private fun placeEffect(pool: EffectPool, index: Int, item: EffectItem, alpha: Double) {
+    val root = pool.roots.getOrNull(index) ?: return
+    val transforms = engine.transformManager
+    val isHidden = item.scaleX <= HIDDEN_EFFECT_SCALE || alpha <= 0.001
+    val scaleX = if (isHidden) HIDDEN_EFFECT_SCALE else item.scaleX
+    val scaleY = if (isHidden) HIDDEN_EFFECT_SCALE else item.scaleY
+    val effectMatrix = floatArrayOf(
+      scaleX.toFloat(), 0f, 0f, 0f, 0f, scaleY.toFloat(), 0f, 0f, 0f, 0f, 1f, 0f,
+      item.x.toFloat(), if (isHidden) PARKED_EFFECT_HEIGHT else item.y.toFloat(), item.z.toFloat(), 1f,
+    )
+    transforms.setTransform(transforms.getInstance(root), effectMatrix)
+  }
+
+  private fun tintEffect(pool: EffectPool, index: Int, red: Double, green: Double, blue: Double, alpha: Double) {
+    val entity = pool.renderables.getOrNull(index) ?: return
+    materialInstance(entity, 0)?.setParameter("baseColorFactor", red.toFloat(), green.toFloat(), blue.toFloat(), alpha.toFloat())
+  }
+
+  private fun applyEffects(frame: SceneFrame) {
+    val layout = frame.effects
+    val glow = frame.glowColorLinear
+    val boost = frame.emissiveBoost
+    val isArmed = frame.rarityLevel >= 0
+    val discs = discPool
+    val rings = ringPool
+    val shaft = shaftPool
+    val burst = EffectsConfig.BURST_PARTICLE_POOL_SIZE
+    val dust = EffectsConfig.DUST_POOL_SIZE
+
+    if (discs != null) {
+      // The prize tints everything that sparkles; dust is a cool, dim shimmer. Only when the prize changes.
+      if (appliedSparkTintLevel != frame.rarityLevel) {
+        for (index in 0 until burst) tintEffect(discs, index, minOf(1.0, glow[0] * boost + 0.15), minOf(1.0, glow[1] * boost + 0.15), minOf(1.0, glow[2] * boost + 0.15), 0.9)
+        for (index in 0 until dust) tintEffect(discs, burst + index, 0.55, 0.7, 1.0, 0.22)
+        appliedSparkTintLevel = frame.rarityLevel
+      }
+      layout.sparks.forEachIndexed { index, item -> placeEffect(discs, index, item, 0.9) }
+      layout.dust.forEachIndexed { index, item -> placeEffect(discs, burst + index, item, 0.22) }
+      layout.auras.forEachIndexed { index, item ->
+        val poolIndex = burst + dust + index
+        placeEffect(discs, poolIndex, item, item.alpha)
+        val color = if (index == frame.focusedCardIndex && isArmed) glow else auraColors.getOrNull(index) ?: listOf(1.0, 1.0, 1.0)
+        val key = listOf(color[0], color[1], color[2], item.alpha)
+        if (appliedAuraKey[index] != key) {
+          tintEffect(discs, poolIndex, color[0], color[1], color[2], item.alpha)
+          appliedAuraKey[index] = key
+        }
+      }
+    }
+    if (shaft != null) {
+      placeEffect(shaft, 0, layout.shaft, layout.shaft.alpha)
+      tintEffect(shaft, 0, minOf(1.0, glow[0] * boost), minOf(1.0, glow[1] * boost), minOf(1.0, glow[2] * boost), layout.shaft.alpha)
+    }
+    if (rings != null) {
+      layout.rings.forEachIndexed { index, item ->
+        placeEffect(rings, index, item, item.alpha)
+        if (item.alpha > 0.001) {
+          tintEffect(rings, index, minOf(1.0, glow[0] * boost + 0.3), minOf(1.0, glow[1] * boost + 0.3), minOf(1.0, glow[2] * boost + 0.3), item.alpha)
+        }
+      }
     }
   }
 
@@ -330,6 +476,9 @@ class FilamentBoxScene(private val context: Context) {
   }
 
   fun destroy() {
+    destroyEffectPool(discPool)
+    destroyEffectPool(ringPool)
+    destroyEffectPool(shaftPool)
     asset?.let { assetLoader.destroyAsset(it) }
     assetLoader.destroy()
     resourceLoader.destroy()
@@ -351,6 +500,8 @@ class FilamentBoxScene(private val context: Context) {
 
   companion object {
     private const val ENVIRONMENT_LIGHT_INTENSITY = 22_000f
+    private const val HIDDEN_EFFECT_SCALE = 0.0001
+    private const val PARKED_EFFECT_HEIGHT = -1000f
 
     // The app background #0B0D12 as linear RGB.
     private val BACKGROUND = floatArrayOf(0.0033f, 0.004f, 0.0060f)

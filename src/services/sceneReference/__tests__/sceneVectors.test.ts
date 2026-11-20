@@ -79,7 +79,9 @@ const scenarios: IScenario[] = [
       ...idle(10),
       at({ kind: K.ResetView }),
       ...idle(100),
-      at({ kind: K.GlowColor, a: 1, b: 0.55, c: 0.08 }, { kind: K.OpenLid }),
+      at({ kind: K.GlowColor, a: 1, b: 0.55, c: 0.08, d: 3 }),
+      ...idle(90),
+      at({ kind: K.OpenLid }),
       ...idle(200),
       at({ kind: K.Tuck }),
       ...idle(60),
@@ -89,6 +91,23 @@ const scenarios: IScenario[] = [
       ...idle(20),
       at({ kind: K.Close }),
       ...idle(40),
+    ],
+  },
+  {
+    // A common prize: smaller show; the list is scrolled hard before and the box is put away only after a long look.
+    name: 'commonPrizeAndFastScroll',
+    frames: [
+      at(...setup, { kind: K.Scroll, a: 0 }),
+      ...idle(60),
+      ...[400, 20, 700, 5].flatMap(offset => [at({ kind: K.Scroll, a: offset }), ...idle(3)]),
+      at({ kind: K.Focus, a: 1 }),
+      ...idle(40),
+      at({ kind: K.GlowColor, a: 0.35, b: 0.5, c: 0.58, d: 0 }),
+      ...idle(40),
+      at({ kind: K.OpenLid }),
+      ...idle(260),
+      at({ kind: K.Tuck }),
+      ...idle(60),
     ],
   },
 ]
@@ -139,5 +158,15 @@ describe('scene test vectors (shared with the Swift and Kotlin tests)', () => {
     expect(frames.some(frame => frame.cards.some(card => card.scale === 0 || !card.isVisible))).toBe(true)
 
     expect(frames.some(frame => frame.focusedCardIndex === 5)).toBe(true)
+
+    expect(frames.some(frame => frame.effects.shaft.alpha > 0.3)).toBe(true)
+
+    expect(frames.some(frame => frame.effects.sparks.some(spark => spark.scaleX > 0))).toBe(true)
+
+    expect(frames.some(frame => frame.effects.rings.some(ring => ring.alpha > 0.1))).toBe(true)
+
+    expect(frames.some(frame => frame.seamIntensity > 1)).toBe(true)
+
+    expect(frames.some(frame => frame.cards.some(card => card.translateX !== 0))).toBe(true)
   })
 })

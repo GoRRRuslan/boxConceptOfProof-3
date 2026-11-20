@@ -50,8 +50,9 @@ export interface IMysterySceneModule {
   closeBox: () => void
   // Anticipation, then the lid swings open.
   openLid: () => void
-  // Colour (linear RGB) of the light inside the opened box.
-  setGlowColor: (red: number, green: number, blue: number) => void
+  // Colour (linear RGB) of the light inside the opened box and the rarity of the prize (0 common ... 3 legendary): the box is
+  // "armed" from now on (its seams breathe) and the show when it opens grows with the rarity.
+  setGlowColor: (red: number, green: number, blue: number, rarityLevel: number) => void
   // Put the opened box away (shrink and sink).
   tuck: () => void
   // Finger movement in pixels.

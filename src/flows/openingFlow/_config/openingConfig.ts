@@ -62,3 +62,8 @@ export const GLOW_PULSE_PERIOD_MILLISECONDS = 1600
 export const TUCK_DELAY_MILLISECONDS = 1800
 export const TUCK_DURATION_MILLISECONDS = 700
 export const TUCK_SINK_OFFSET_FRACTION = 0.06
+
+// Pulses of the haptic engine while the box charges: milliseconds after the open command (denser and harder towards the end).
+export const ANTICIPATION_HAPTIC_PULSES_MILLISECONDS = [0, 260, 440, 560, 650, 715, 765]
+// Holding a finger on a bought box this long opens it (alternative to swiping up).
+export const HOLD_TO_OPEN_MILLISECONDS = 450

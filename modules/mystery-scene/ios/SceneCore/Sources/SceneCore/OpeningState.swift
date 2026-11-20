@@ -14,6 +14,8 @@ public struct OpeningSceneState: Equatable {
   public var tuckFromProgress: Double = 0
   public var tuckStartedAtMilliseconds: Double = 0
   public var glowColorLinear: [Double] = [1, 1, 1]
+  // 0 (common) ... 3 (legendary); -1 until a prize has been bought (the box is "armed" from then on).
+  public var rarityLevel: Double = -1
 
   public init() {}
 }
@@ -72,6 +74,7 @@ public func computeGlowStrength(_ lidProgress: Double, _ now: Double) -> Double 
 public func startFocus(_ state: OpeningSceneState, _ cardIndex: Int, _ now: Double) -> OpeningSceneState {
   var next = state
   next.focusedCardIndex = cardIndex
+  next.rarityLevel = -1
   next.focusTarget = 1
   next.focusFromProgress = getFocusProgress(state, now)
   next.focusStartedAtMilliseconds = now
@@ -109,9 +112,10 @@ public func startLidOpen(_ state: OpeningSceneState, _ now: Double) -> OpeningSc
   return next
 }
 
-public func withGlowColor(_ state: OpeningSceneState, _ glowColorLinear: [Double]) -> OpeningSceneState {
+public func withGlowColor(_ state: OpeningSceneState, _ glowColorLinear: [Double], _ rarityLevel: Double) -> OpeningSceneState {
   var next = state
   next.glowColorLinear = glowColorLinear
+  next.rarityLevel = rarityLevel
   return next
 }
 

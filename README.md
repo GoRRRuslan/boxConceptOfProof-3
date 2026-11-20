@@ -9,7 +9,7 @@
 [![Zustand](https://img.shields.io/badge/Zustand-5-ffdd57?logoColor=black)](https://zustand-demo.pmnd.rs/)
 [![React Query](https://img.shields.io/badge/React%20Query-5-ff4154?logo=react-query&logoColor=white)](https://tanstack.com/query/latest)
 
-> **Documentation map:** [docs/README.md](docs/README.md) · **native scene:** [docs/NATIVE_SCENE.md](docs/NATIVE_SCENE.md) · **how to test:** [docs/TESTING.md](docs/TESTING.md) · **animations:** [docs/ANIMATIONS.md](docs/ANIMATIONS.md) · **test results:** [docs/TEST_CHECKLIST.md](docs/TEST_CHECKLIST.md) · **FPS:** [docs/PERFORMANCE.md](docs/PERFORMANCE.md)
+> **Documentation map:** [docs/README.md](docs/README.md) · **native scene:** [docs/NATIVE_SCENE.md](docs/NATIVE_SCENE.md) · **how to test:** [docs/TESTING.md](docs/TESTING.md) · **animations:** [docs/ANIMATIONS.md](docs/ANIMATIONS.md) · **the show:** [docs/EFFECTS.md](docs/EFFECTS.md) · **test results:** [docs/TEST_CHECKLIST.md](docs/TEST_CHECKLIST.md) · **FPS:** [docs/PERFORMANCE.md](docs/PERFORMANCE.md)
 >
 > **One rule above all:** test on **one platform at a time**. Either the Android emulator with the iOS simulator shut down, or the iOS simulator with the Android emulator shut down. They share the Mac's GPU and CPU; with both open you get false jank and useless FPS numbers ([why and how to switch](docs/TESTING.md#rule-1--one-platform-at-a-time)).
 
@@ -56,6 +56,7 @@ The TypeScript side follows the conventions of an enterprise React Native app: f
 - 🔄 Zustand (session-scoped, no persistence) + React Query over an asynchronous mock API with a failure switch
 - 🧪 Jest + React Native Testing Library, **XCTest (Swift) and JUnit (Kotlin) parity tests** against a TypeScript reference, ESLint 9 + Prettier, `ciPipeline`
 - 🧩 An **Expo module** (`modules/mystery-scene`), autolinked, with a typed JavaScript API
+- 🌟 A **show around the box**: breathing and flashing seams, a soft light curtain from the open box to the watch, shock waves, sparks, camera punch, lid settle, hold-to-open — bigger for rarer prizes ([docs/EFFECTS.md](docs/EFFECTS.md))
 - ✨ A full set of animations (push-in, anticipation, rarity reveal, gestures, sound) described with screenshots for both platforms in [docs/ANIMATIONS.md](docs/ANIMATIONS.md)
 - 📊 Reproducible performance tooling and an honest [performance report](docs/PERFORMANCE.md)
 

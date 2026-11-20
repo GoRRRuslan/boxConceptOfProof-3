@@ -44,6 +44,14 @@ export const RARITY_STYLES: Record<EWatchRarity, IRarityStyle> = {
   },
 }
 
+// 0 (common) ... 3 (legendary): how big the show in the 3D scene is.
+export const RARITY_LEVELS: Record<EWatchRarity, number> = {
+  [EWatchRarity.Common]: 0,
+  [EWatchRarity.Rare]: 1,
+  [EWatchRarity.Epic]: 2,
+  [EWatchRarity.Legendary]: 3,
+}
+
 // A watch is rarer the more it is worth (in cents).
 export const RARITY_THRESHOLDS_IN_CENTS: { rarity: EWatchRarity; minimumValueInCents: number }[] = [
   { rarity: EWatchRarity.Legendary, minimumValueInCents: 200_000 },

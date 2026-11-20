@@ -5,6 +5,7 @@ data class CardFrame(
   val scale: Double,
   val pitchRadians: Double,
   val yawRadians: Double,
+  val translateX: Double,
   val translateY: Double,
   val translateZ: Double,
 )
@@ -18,6 +19,10 @@ data class SceneFrame(
   val lidTranslateZ: Double,
   val glowStrength: Double,
   val glowColorLinear: List<Double>,
+  val rarityLevel: Double,
+  val seamIntensity: Double,
+  val emissiveBoost: Double,
+  val effects: EffectsLayout,
 )
 
 /**
@@ -35,6 +40,11 @@ class SceneController {
   private var tiltX = 0.0
   private var tiltY = 0.0
   private var entranceStartedAt: Double? = null
+
+  /** Last scroll offset and time a frame saw, and the filtered sway of the boxes. */
+  private var swayOffset = 0.0
+  private var swayTime = 0.0
+  private var swayValue = 0.0
   private var wakeUntilMilliseconds = 0.0
 
   fun setCardCount(count: Int, now: Double) {
@@ -84,8 +94,8 @@ class SceneController {
     hold(now, COMMAND_HOLD_MILLISECONDS)
   }
 
-  fun setGlowColor(color: List<Double>, now: Double) {
-    openingScene = withGlowColor(openingScene, color)
+  fun setGlowColor(color: List<Double>, rarityLevel: Double, now: Double) {
+    openingScene = withGlowColor(openingScene, color, rarityLevel)
     hold(now, COMMAND_HOLD_MILLISECONDS)
   }
 
@@ -134,8 +144,24 @@ class SceneController {
     val dollyProgress = easeOutBack(focusLinearProgress)
     val lidProgress = getLidProgress(scene, now)
     val tuckProgress = easeInOutCubic(getTuckProgress(scene, now))
-    val anticipation = computeAnticipationEffect(getAnticipationProgress(scene, now), now)
-    val lidAngleRadians = computeLidAngleRadians(lidProgress, scene.lidTarget == 1.0)
+    val popElapsed = getPopElapsedMilliseconds(scene, now)
+    val jitterScale = computeJitterScale(popElapsed)
+    val rawAnticipation = computeAnticipationEffect(getAnticipationProgress(scene, now), now)
+    val anticipation = rawAnticipation.copy(
+      jitterYawRadians = rawAnticipation.jitterYawRadians * jitterScale,
+      jitterPitchRadians = rawAnticipation.jitterPitchRadians * jitterScale,
+    )
+    val punch = computeCameraPunch(popElapsed, scene.rarityLevel)
+    val seamIntensity = computeSeamIntensity(scene, now, focusLinearProgress, tuckProgress)
+    val lidAngleRadians = computeLidAngleRadians(lidProgress, scene.lidTarget == 1.0) +
+      (if (scene.lidTarget == 1.0) computeLidSettleDegrees(popElapsed) * Math.PI / 180 else 0.0)
+
+    val scrollDeltaSeconds = (now - swayTime) / 1000
+    val scrollVelocity = if (scrollDeltaSeconds > 0 && scrollDeltaSeconds < 0.2) (scrollOffset - swayOffset) / scrollDeltaSeconds else 0.0
+    val sway = stepScrollSway(swayValue, scrollVelocity, deltaSeconds)
+    swayOffset = scrollOffset
+    swayTime = now
+    swayValue = sway
 
     val isAutoRotateAllowed = scene.focusTarget == 1.0 && scene.lidTarget == 0.0 && focusLinearProgress >= 1
     if (isDragStateAnimating(dragState, isAutoRotateAllowed)) {
@@ -149,13 +175,17 @@ class SceneController {
     val entranceStart = entranceStartedAt ?: Double.MAX_VALUE
 
     val cards = ArrayList<CardFrame>(cardCount)
+    val poses = ArrayList<OpeningPose>(cardCount)
+    var shakeX = 0.0
     for (cardIndex in 0 until cardCount) {
       val listPose = computeBoxPose(cardIndex, scrollOffset, viewportHeight)
       val entranceScale = computeEntranceScale(now - entranceStart - cardIndex * SceneConfig.ENTRANCE_STAGGER_MILLISECONDS)
       val squeeze = if (pressState.cardIndex == cardIndex) pressScale else 1.0
-      val pose = computeOpeningPose(
+      val openingPose = computeOpeningPose(
         OpeningPoseInput(
-          listPose = listPose.copy(scale = listPose.scale * entranceScale * squeeze),
+          listPose = listPose.copy(
+            scale = listPose.scale * entranceScale * squeeze, yawRadians = listPose.yawRadians + sway, pitchRadians = listPose.pitchRadians + sway * 0.5,
+          ),
           isFocusedCard = cardIndex == scene.focusedCardIndex,
           lidProgress = lidProgress, focusProgress = focusProgress, dollyProgress = dollyProgress,
           viewportWidth = viewportWidth, viewportHeight = viewportHeight,
@@ -164,14 +194,29 @@ class SceneController {
           anticipation = anticipation, tuckProgress = tuckProgress,
         ),
       )
-      cards.add(CardFrame(pose.isVisible, pose.scale, pose.pitchRadians, pose.yawRadians, pose.translateY, pose.translateZ))
+      val isFocusedCard = cardIndex == scene.focusedCardIndex
+      val pose = if (isFocusedCard) {
+        shakeX = punch.shakeX * openingPose.scale
+        openingPose.copy(scale = openingPose.scale * (1 + punch.scaleBoost), translateY = openingPose.translateY + punch.shakeY * openingPose.scale)
+      } else {
+        openingPose
+      }
+      poses.add(pose)
+      cards.add(
+        CardFrame(
+          pose.isVisible, pose.scale, pose.pitchRadians, pose.yawRadians, if (isFocusedCard) punch.shakeX * openingPose.scale else 0.0,
+          pose.translateY, pose.translateZ,
+        ),
+      )
     }
 
     val hinge = computeLidHingeTransform(lidAngleRadians * 180 / Math.PI)
     val hasFocusedCard = scene.focusedCardIndex in 0 until cardCount
     return SceneFrame(
       cards, if (hasFocusedCard) scene.focusedCardIndex else -1, lidAngleRadians, hinge.translateY, hinge.translateZ,
-      computeGlowStrength(lidProgress, now), scene.glowColorLinear,
+      computeGlowStrength(lidProgress, now), scene.glowColorLinear, scene.rarityLevel, seamIntensity,
+      getRarityProfile(scene.rarityLevel).emissiveBoost,
+      computeEffectsLayout(scene, now, focusProgress, tuckProgress, seamIntensity, poses, shakeX),
     )
   }
 
@@ -189,6 +234,9 @@ class SceneController {
 
     // Inspecting a closed box: it turns slowly by itself, the scene never rests.
     if (scene.focusTarget == 1.0 && scene.lidTarget == 0.0 && getFocusProgress(scene, now) >= 1) return true
+    // A bought box breathes light from its seams; the burst, shock waves and light play out after the lid is let go.
+    if (scene.focusTarget == 1.0 && scene.rarityLevel >= 0 && scene.lidTarget == 0.0 && getFocusProgress(scene, now) >= 1) return true
+    if (scene.lidTarget == 1.0 && scene.lidStartedAtMilliseconds > 0 && now < scene.lidStartedAtMilliseconds + EffectsConfig.BURST_LIFETIME_MILLISECONDS) return true
     // The opened box pulses with light until it is put away.
     if (scene.focusedCardIndex >= 0 && getLidProgress(scene, now) > 0 && getTuckProgress(scene, now) < 1) return true
 

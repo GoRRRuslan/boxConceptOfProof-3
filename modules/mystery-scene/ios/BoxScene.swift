@@ -19,6 +19,10 @@ final class BoxScene {
   private var glowMaterials: [[SCNMaterial]] = []
   private var bodyMaterials: [[SCNMaterial]] = []
   private var parts: [GlbPart] = []
+  // The show around the boxes (aura, sparks, dust, light curtain, shock waves).
+  private let effects = EffectNodes()
+  private var seamMaterials: [[SCNMaterial]] = []
+  private var appliedSeamIntensity: [Int: Double] = [:]
   private var appliedGlowStrength: [Int: Double] = [:]
   private var lastFocusedCardIndex = -1
 
@@ -29,6 +33,7 @@ final class BoxScene {
     static let lid = "Shell_Lid"
     static let wordmark = "Shell_Wordmark"
     static let cushion = "Shell_Fitted_Cushion"
+    static let seam = "Shell_Seam"
   }
 
   init() {
@@ -37,6 +42,7 @@ final class BoxScene {
     configureLights()
     scene.lightingEnvironment.contents = EnvironmentImage.make()
     scene.lightingEnvironment.intensity = 0.8
+    scene.rootNode.addChildNode(effects.root)
   }
 
   // ------------------------------------------------------------------ Setup
@@ -103,11 +109,12 @@ final class BoxScene {
 
   var isModelLoaded: Bool { !parts.isEmpty }
 
-  private func makeBoxInstance() -> (root: SCNNode, lids: [SCNNode], glow: [SCNMaterial], body: [SCNMaterial]) {
+  private func makeBoxInstance() -> (root: SCNNode, lids: [SCNNode], glow: [SCNMaterial], body: [SCNMaterial], seam: [SCNMaterial]) {
     let root = SCNNode()
     var lids: [SCNNode] = []
     var glow: [SCNMaterial] = []
     var body: [SCNMaterial] = []
+    var seam: [SCNMaterial] = []
 
     for part in parts {
       let partNode = SCNNode()
@@ -123,6 +130,7 @@ final class BoxScene {
         partNode.addChildNode(node)
 
         if (part.name == PartName.base || part.name == PartName.lid) && primitiveIndex == 0 { body.append(material) }
+        if part.name == PartName.seam && primitiveIndex == 0 { seam.append(material) }
         if (part.name == PartName.cushion && primitiveIndex == 0) || (part.name == PartName.lid && primitiveIndex == 1) {
           glow.append(material)
         }
@@ -130,7 +138,7 @@ final class BoxScene {
       if part.name == PartName.lid || part.name == PartName.wordmark { lids.append(partNode) }
       root.addChildNode(partNode)
     }
-    return (root, lids, glow, body)
+    return (root, lids, glow, body, seam)
   }
 
   private func applyClearCoat(_ material: SCNMaterial, factor: Double, roughness: Double) {
@@ -146,7 +154,9 @@ final class BoxScene {
       lidNodes = []
       glowMaterials = []
       bodyMaterials = []
+      seamMaterials = []
       appliedGlowStrength = [:]
+      appliedSeamIntensity = [:]
       for _ in looks {
         let instance = makeBoxInstance()
         instance.root.isHidden = true
@@ -155,6 +165,7 @@ final class BoxScene {
         lidNodes.append(instance.lids)
         glowMaterials.append(instance.glow)
         bodyMaterials.append(instance.body)
+        seamMaterials.append(instance.seam)
       }
     }
     for (index, look) in looks.enumerated() {
@@ -165,6 +176,7 @@ final class BoxScene {
         material.clearCoat.contents = look.clearCoat
       }
     }
+    effects.setCardColors(looks.map { $0.colorLinear })
   }
 
   // ------------------------------------------------------------------ Frame
@@ -184,7 +196,8 @@ final class BoxScene {
       matrix.columns.2 *= scale
       let centre = SIMD4<Float>(0, Float(-SceneConfig.boxCenterHeightUnits), 0, 1)
       let centred = matrix * centre
-      matrix.columns.3 = SIMD4<Float>(centred.x, centred.y + Float(card.translateY), centred.z + Float(card.translateZ), 1)
+      matrix.columns.3 = SIMD4<Float>(
+        centred.x + Float(card.translateX), centred.y + Float(card.translateY), centred.z + Float(card.translateZ), 1)
       root.simdTransform = matrix
     }
 
@@ -192,6 +205,7 @@ final class BoxScene {
     if lastFocusedCardIndex != frame.focusedCardIndex {
       setLid(cardIndex: lastFocusedCardIndex, angle: 0, translateY: 0, translateZ: 0)
       setGlow(cardIndex: lastFocusedCardIndex, strength: 0, color: [0, 0, 0])
+      setSeam(cardIndex: lastFocusedCardIndex, intensity: 0, color: [0, 0, 0], boost: 1)
       lastFocusedCardIndex = frame.focusedCardIndex
     }
     if frame.focusedCardIndex >= 0 {
@@ -199,6 +213,22 @@ final class BoxScene {
         cardIndex: frame.focusedCardIndex, angle: frame.lidAngleRadians, translateY: frame.lidTranslateY,
         translateZ: frame.lidTranslateZ)
       setGlow(cardIndex: frame.focusedCardIndex, strength: frame.glowStrength, color: frame.glowColorLinear)
+      setSeam(
+        cardIndex: frame.focusedCardIndex, intensity: frame.seamIntensity, color: frame.glowColorLinear, boost: frame.emissiveBoost)
+    }
+    effects.apply(frame)
+  }
+
+  // The coloured trim of the seam lights up in the colour of the prize (breathing, charging, flashing).
+  private func setSeam(cardIndex: Int, intensity: Double, color: [Double], boost: Double) {
+    guard cardIndex >= 0, cardIndex < seamMaterials.count else { return }
+    if let previous = appliedSeamIntensity[cardIndex], abs(previous - intensity) <= 0.004 { return }
+    appliedSeamIntensity[cardIndex] = intensity
+    let strength = intensity * boost
+    let emission = GlbLoader.linearColor(min(1, color[0] * strength), min(1, color[1] * strength), min(1, color[2] * strength))
+    seamMaterials[cardIndex].forEach {
+      $0.emission.contents = emission
+      $0.emission.intensity = 1.6
     }
   }
 

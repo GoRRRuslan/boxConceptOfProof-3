@@ -30,7 +30,7 @@ export const OpeningOverlay = ({ opening }: IOpeningOverlayProps) => {
             {reveal.rarityLabelText}
           </AppText>
         </View>
-        <WatchRevealImage source={reveal.imageSource} />
+        <WatchRevealImage source={reveal.imageSource} tilt={opening.tilt} />
         <Animated.View entering={FadeInUp.delay(450).duration(450)} style={styles.revealTexts}>
           <AppText style={styles.watchValue}>{reveal.valueText}</AppText>
           <AppText style={styles.watchName} testID="revealedWatchName">

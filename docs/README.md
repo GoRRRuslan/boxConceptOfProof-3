@@ -12,6 +12,7 @@ Start here. Each row says what a document is for, so you can open the right one 
 | Understand the native 3D module: API, data flow JS ↔ native, engines and why, scroll sync, render on demand, parity tests | [NATIVE_SCENE.md](NATIVE_SCENE.md), [../README.md → The Native Module](../README.md#6-the-native-module) |
 | See how the 3D scene works (one scene, hinge) | [../README.md → Real-time 3D](../README.md#5-real-time-3d), [MODEL.md](MODEL.md) |
 | See every animation, screenshots of every step, how the two platforms differ | [ANIMATIONS.md](ANIMATIONS.md) |
+| See the show around the box (seams, light, sparks, shock waves, camera punch) | [EFFECTS.md](EFFECTS.md) |
 | **Test the app (rules, iOS, Android, native tests, FPS)** | **[TESTING.md](TESTING.md)** |
 | See what was tested and the result, plus bugs found | [TEST_CHECKLIST.md](TEST_CHECKLIST.md) |
 | See FPS numbers, startup timeline, method and limits | [PERFORMANCE.md](PERFORMANCE.md) |
@@ -28,6 +29,7 @@ Start here. Each row says what a document is for, so you can open the right one 
 | [ASSIGNMENT.md](ASSIGNMENT.md) | The original assignment |
 | [NATIVE_SCENE.md](NATIVE_SCENE.md) | The native 3D module: layout, API, data flow, engines, scroll sync, render on demand, parity |
 | [ANIMATIONS.md](ANIMATIONS.md) | All animations with screenshots, platform differences |
+| [EFFECTS.md](EFFECTS.md) | The show around the box: timeline, rarity table, how it is drawn |
 | [TESTING.md](TESTING.md) | Testing guide and the golden rules |
 | [TEST_CHECKLIST.md](TEST_CHECKLIST.md) | Cases, results per platform, bugs found, gaps |
 | [PERFORMANCE.md](PERFORMANCE.md) | FPS report: numbers, startup, Android backend, method, limits |

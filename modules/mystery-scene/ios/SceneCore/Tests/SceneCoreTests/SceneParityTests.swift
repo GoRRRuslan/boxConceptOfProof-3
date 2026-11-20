@@ -21,6 +21,7 @@ final class SceneParityTests: XCTestCase {
     let a = number(command["a"])
     let b = number(command["b"])
     let c = number(command["c"])
+    let d = number(command["d"])
 
     switch command["kind"] as? String ?? "" {
     case "modelReady": controller.markModelReady(now: now)
@@ -31,7 +32,7 @@ final class SceneParityTests: XCTestCase {
     case "focus": controller.focus(cardIndex: Int(a), now: now)
     case "close": controller.close(now: now)
     case "openLid": controller.openLid(now: now)
-    case "glowColor": controller.setGlowColor([a, b, c], now: now)
+    case "glowColor": controller.setGlowColor([a, b, c], rarityLevel: d, now: now)
     case "tuck": controller.tuck(now: now)
     case "dragBy": controller.dragBy(deltaX: a, deltaY: b, now: now)
     case "dragEnd": controller.dragEnd(velocityX: a, velocityY: b, now: now)
@@ -40,6 +41,30 @@ final class SceneParityTests: XCTestCase {
     case "tilt": controller.setTilt(x: a, y: b, now: now)
     default: XCTFail("unknown command \(command)")
     }
+  }
+
+  private func compareItem(_ actual: EffectItem, _ expected: [String: Any], tolerance: Double, label: String) {
+    XCTAssertEqual(actual.x, number(expected["x"]), accuracy: tolerance, label)
+    XCTAssertEqual(actual.y, number(expected["y"]), accuracy: tolerance, label)
+    XCTAssertEqual(actual.z, number(expected["z"]), accuracy: tolerance, label)
+    XCTAssertEqual(actual.scaleX, number(expected["scaleX"]), accuracy: tolerance, label)
+    XCTAssertEqual(actual.scaleY, number(expected["scaleY"]), accuracy: tolerance, label)
+    XCTAssertEqual(actual.alpha, number(expected["alpha"]), accuracy: tolerance, label)
+  }
+
+  private func compareItems(_ actual: [EffectItem], _ expected: [[String: Any]], tolerance: Double, label: String) {
+    XCTAssertEqual(actual.count, expected.count, label)
+    for (index, item) in expected.enumerated() where index < actual.count {
+      compareItem(actual[index], item, tolerance: tolerance, label: "\(label) #\(index)")
+    }
+  }
+
+  private func compareEffects(_ actual: EffectsLayout, _ expected: [String: Any], tolerance: Double, label: String) {
+    compareItems(actual.auras, expected["auras"] as? [[String: Any]] ?? [], tolerance: tolerance, label: "\(label) aura")
+    compareItems(actual.sparks, expected["sparks"] as? [[String: Any]] ?? [], tolerance: tolerance, label: "\(label) spark")
+    compareItems(actual.dust, expected["dust"] as? [[String: Any]] ?? [], tolerance: tolerance, label: "\(label) dust")
+    compareItem(actual.shaft, expected["shaft"] as? [String: Any] ?? [:], tolerance: tolerance, label: "\(label) shaft")
+    compareItems(actual.rings, expected["rings"] as? [[String: Any]] ?? [], tolerance: tolerance, label: "\(label) ring")
   }
 
   func testEveryScenarioMatchesTheTypeScriptReference() throws {
@@ -76,6 +101,11 @@ final class SceneParityTests: XCTestCase {
         XCTAssertEqual(actual.glowColorLinear.count, glow.count, label)
         for (index, value) in glow.enumerated() { XCTAssertEqual(actual.glowColorLinear[index], value, accuracy: tolerance, label) }
 
+        XCTAssertEqual(actual.rarityLevel, number(expected["rarityLevel"]), accuracy: tolerance, label)
+        XCTAssertEqual(actual.seamIntensity, number(expected["seamIntensity"]), accuracy: tolerance, label)
+        XCTAssertEqual(actual.emissiveBoost, number(expected["emissiveBoost"]), accuracy: tolerance, label)
+        compareEffects(actual.effects, expected["effects"] as? [String: Any] ?? [:], tolerance: tolerance, label: label)
+
         let cards = expected["cards"] as? [[String: Any]] ?? []
         XCTAssertEqual(actual.cards.count, cards.count, label)
         for (index, card) in cards.enumerated() where index < actual.cards.count {
@@ -85,6 +115,7 @@ final class SceneParityTests: XCTestCase {
           XCTAssertEqual(actualCard.scale, number(card["scale"]), accuracy: tolerance, cardLabel)
           XCTAssertEqual(actualCard.pitchRadians, number(card["pitchRadians"]), accuracy: tolerance, cardLabel)
           XCTAssertEqual(actualCard.yawRadians, number(card["yawRadians"]), accuracy: tolerance, cardLabel)
+          XCTAssertEqual(actualCard.translateX, number(card["translateX"]), accuracy: tolerance, cardLabel)
           XCTAssertEqual(actualCard.translateY, number(card["translateY"]), accuracy: tolerance, cardLabel)
           XCTAssertEqual(actualCard.translateZ, number(card["translateZ"]), accuracy: tolerance, cardLabel)
         }
