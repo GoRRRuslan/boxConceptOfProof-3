@@ -2,6 +2,7 @@ package expo.modules.mysteryscene
 
 import android.content.Context
 import com.google.android.filament.Camera
+import com.google.android.filament.ColorGrading
 import com.google.android.filament.Colors
 import com.google.android.filament.Engine
 import com.google.android.filament.EntityManager
@@ -21,6 +22,8 @@ import com.google.android.filament.utils.KTX1Loader
 import expo.modules.mysteryscene.math.EffectItem
 import expo.modules.mysteryscene.math.EffectsConfig
 import expo.modules.mysteryscene.math.SceneConfig
+import expo.modules.mysteryscene.math.computeIridescenceTint
+import expo.modules.mysteryscene.math.getIridescenceStrength
 import expo.modules.mysteryscene.math.SceneFrame
 import java.nio.ByteBuffer
 import kotlin.math.atan
@@ -78,6 +81,11 @@ class FilamentBoxScene(private val context: Context) {
   private val matrix = FloatArray(16)
   private val appliedSeamIntensity = HashMap<Int, Double>()
 
+  // The look of every box and the last iridescence tint written to its body (the glossy boxes shimmer).
+  private var cardLooks: List<BoxLook> = emptyList()
+  private val appliedIridescence = HashMap<Int, List<Double>>()
+  private var colorGrading: ColorGrading? = null
+
   // The show around the boxes: pools of flat soft shapes (a disc, a ring, a curtain of light) that face the camera. The scene
   // controller computes where each one is (EffectsLayout); this class only places and tints them. Nothing is created per frame.
   private class EffectPool(val asset: FilamentAsset, val roots: List<Int>, val renderables: List<Int>)
@@ -111,6 +119,9 @@ class FilamentBoxScene(private val context: Context) {
     view.antiAliasing = View.AntiAliasing.NONE
     view.dithering = View.Dithering.NONE
     view.isPostProcessingEnabled = true
+    // A touch of colour grading: slightly more contrast and saturation.
+    colorGrading = ColorGrading.Builder().contrast(1.05f).saturation(1.08f).build(engine)
+    view.colorGrading = colorGrading
     view.ambientOcclusionOptions = View.AmbientOcclusionOptions().apply {
       enabled = false
       radius = 0.35f
@@ -222,6 +233,8 @@ class FilamentBoxScene(private val context: Context) {
       }
     }
     auraColors = looks.map { it.colorLinear }
+    cardLooks = looks
+    appliedIridescence.clear()
     ensureEffectPools(looks.size)
     looks.forEachIndexed { index, look ->
       val box = instances.getOrNull(index) ?: return@forEachIndexed
@@ -337,6 +350,27 @@ class FilamentBoxScene(private val context: Context) {
       matrix[14] = (matrix[6] * centre + card.translateZ).toFloat()
       matrix[15] = 1f
       transforms.setTransform(transforms.getInstance(box.rootEntity), matrix)
+    }
+
+    // Iridescence: the glossy boxes shimmer with the turn of the box (a colour added to the base colour).
+    frame.cards.forEachIndexed { index, card ->
+      val look = cardLooks.getOrNull(index) ?: return@forEachIndexed
+      val box = instances.getOrNull(index) ?: return@forEachIndexed
+      val strength = getIridescenceStrength(look.metallic)
+      if (strength <= 0 || !card.isVisible) return@forEachIndexed
+      val tint = computeIridescenceTint(strength, card.yawRadians, card.pitchRadians, frame.nowMilliseconds)
+      val previous = appliedIridescence[index]
+      if (previous != null && kotlin.math.abs(previous[0] - tint[0]) + kotlin.math.abs(previous[1] - tint[1]) + kotlin.math.abs(previous[2] - tint[2]) <= 0.006) {
+        return@forEachIndexed
+      }
+      appliedIridescence[index] = tint
+      box.bodyTargets.forEach { (entity, primitive) ->
+        materialInstance(entity, primitive)?.setParameter(
+          "baseColorFactor",
+          maxOf(0.0, look.colorLinear[0] + tint[0]).toFloat(), maxOf(0.0, look.colorLinear[1] + tint[1]).toFloat(),
+          maxOf(0.0, look.colorLinear[2] + tint[2]).toFloat(), 1f,
+        )
+      }
     }
 
     // The lid (and its wordmark) of the focused box swings about the hinge pivot; a box that lost the focus is closed.
@@ -490,6 +524,7 @@ class FilamentBoxScene(private val context: Context) {
     }
     indirectLight?.let { engine.destroyIndirectLight(it) }
     skybox?.let { engine.destroySkybox(it) }
+    colorGrading?.let { engine.destroyColorGrading(it) }
     engine.destroyView(view)
     engine.destroyScene(scene)
     engine.destroyCameraComponent(cameraEntity)

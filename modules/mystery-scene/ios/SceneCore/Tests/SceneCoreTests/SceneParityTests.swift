@@ -123,4 +123,20 @@ final class SceneParityTests: XCTestCase {
     }
     XCTAssertGreaterThan(comparedFrames, 100)
   }
+
+  func testIridescenceMatchesTheTypeScriptReference() throws {
+    let vectors = try loadVectors()
+    let tolerance = number(vectors["tolerance"])
+    let samples = try XCTUnwrap(vectors["iridescenceSamples"] as? [[String: Any]])
+    XCTAssertGreaterThanOrEqual(samples.count, 5)
+    for sample in samples {
+      let strength = getIridescenceStrength(number(sample["metallic"]))
+      XCTAssertEqual(strength, number(sample["strength"]), accuracy: tolerance)
+      let tint = computeIridescenceTint(
+        strength, number(sample["yawRadians"]), number(sample["pitchRadians"]), number(sample["nowMilliseconds"]))
+      let expected = (sample["tint"] as? [NSNumber] ?? []).map { $0.doubleValue }
+      XCTAssertEqual(tint.count, 3)
+      for (index, value) in expected.enumerated() { XCTAssertEqual(tint[index], value, accuracy: tolerance) }
+    }
+  }
 }

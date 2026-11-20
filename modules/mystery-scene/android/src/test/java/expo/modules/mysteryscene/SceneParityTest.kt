@@ -1,6 +1,8 @@
 package expo.modules.mysteryscene
 
 import expo.modules.mysteryscene.math.EffectItem
+import expo.modules.mysteryscene.math.computeIridescenceTint
+import expo.modules.mysteryscene.math.getIridescenceStrength
 import expo.modules.mysteryscene.math.SceneController
 import java.io.File
 import org.json.JSONArray
@@ -123,5 +125,21 @@ class SceneParityTest {
       }
     }
     assertTrue(comparedFrames > 100)
+  }
+
+  @Test
+  fun iridescenceMatchesTheTypeScriptReference() {
+    val vectors = loadVectors()
+    val tolerance = vectors.getDouble("tolerance")
+    val samples = vectors.getJSONArray("iridescenceSamples")
+    assertTrue(samples.length() >= 5)
+    for (index in 0 until samples.length()) {
+      val sample = samples.getJSONObject(index)
+      val strength = getIridescenceStrength(sample.getDouble("metallic"))
+      assertEquals(sample.getDouble("strength"), strength, tolerance)
+      val tint = computeIridescenceTint(strength, sample.getDouble("yawRadians"), sample.getDouble("pitchRadians"), sample.getDouble("nowMilliseconds"))
+      val expected = sample.getJSONArray("tint")
+      for (channel in 0 until 3) assertEquals(expected.getDouble(channel), tint[channel], tolerance)
+    }
   }
 }

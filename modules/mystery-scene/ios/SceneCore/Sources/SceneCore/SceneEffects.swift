@@ -55,6 +55,13 @@ public enum EffectsConfig {
   public static let auraDepthBehindBox = 0.9
   public static let inFrontOfBoxModelUnits = 1.3
 
+  public static let iridescenceMinimumMetallic = 0.25
+  public static let iridescenceMetallicRange = 0.4
+  public static let iridescenceAmplitude = 0.16
+  public static let iridescenceYawFrequency = 1.3
+  public static let iridescencePitchFrequency = 0.9
+  public static let iridescenceTimeFrequency = 0.0006
+
   public static let swayRadiansPerPixelPerSecond = 0.00035
   public static let swayMaximumRadians = 0.25
   public static let swayResponsePerSecond = 10.0
@@ -218,7 +225,7 @@ public func computeDustPoint(_ dustIndex: Int, _ now: Double, _ anticipationLine
     x: cos(angle) * radius,
     y: sin(now * 0.0007 + index) * 0.5 + (fraction(index * 0.61) - 0.5) * 1.6,
     z: -(0.8 + 0.9 * fraction(index * 0.53)),
-    scale: (EffectsConfig.dustSize + 0.12 * fraction(index * 0.77)) * visibility)
+    scale: (EffectsConfig.dustSize + 0.12 * fraction(index * 0.77)) * (0.6 + 1.0 * fraction(index * 0.53)) * visibility)
 }
 
 public func computeAuraAlpha(_ isFocusedCard: Bool, _ focusProgress: Double, _ seamIntensity: Double, _ popElapsedMilliseconds: Double)
@@ -251,6 +258,21 @@ public func stepScrollSway(_ previousSway: Double, _ scrollVelocityPixelsPerSeco
     -EffectsConfig.swayMaximumRadians,
     min(EffectsConfig.swayMaximumRadians, -scrollVelocityPixelsPerSecond * EffectsConfig.swayRadiansPerPixelPerSecond))
   return previousSway + (target - previousSway) * min(1, deltaSeconds * EffectsConfig.swayResponsePerSecond)
+}
+
+// 0..1 how much a box with this metallic finish shimmers (iridescence).
+public func getIridescenceStrength(_ metallic: Double) -> Double {
+  clampToUnitInterval((metallic - EffectsConfig.iridescenceMinimumMetallic) / EffectsConfig.iridescenceMetallicRange)
+}
+
+// Colour shift (linear RGB, added to the base colour) of a shimmering box turned to yaw / pitch.
+public func computeIridescenceTint(_ strength: Double, _ yawRadians: Double, _ pitchRadians: Double, _ now: Double) -> [Double] {
+  if strength <= 0 { return [0, 0, 0] }
+  let phase =
+    yawRadians * EffectsConfig.iridescenceYawFrequency + pitchRadians * EffectsConfig.iridescencePitchFrequency
+    + now * EffectsConfig.iridescenceTimeFrequency
+  let amplitude = strength * EffectsConfig.iridescenceAmplitude
+  return [amplitude * cos(phase), amplitude * cos(phase + 2.094), amplitude * cos(phase + 4.189)]
 }
 
 // ------------------------------- Layout -------------------------------- //

@@ -23,6 +23,8 @@ data class SceneFrame(
   val seamIntensity: Double,
   val emissiveBoost: Double,
   val effects: EffectsLayout,
+  /** The time of this frame (milliseconds): the engines need it for the shimmer of the glossy boxes. */
+  val nowMilliseconds: Double,
 )
 
 /**
@@ -216,7 +218,7 @@ class SceneController {
       cards, if (hasFocusedCard) scene.focusedCardIndex else -1, lidAngleRadians, hinge.translateY, hinge.translateZ,
       computeGlowStrength(lidProgress, now), scene.glowColorLinear, scene.rarityLevel, seamIntensity,
       getRarityProfile(scene.rarityLevel).emissiveBoost,
-      computeEffectsLayout(scene, now, focusProgress, tuckProgress, seamIntensity, poses, shakeX),
+      computeEffectsLayout(scene, now, focusProgress, tuckProgress, seamIntensity, poses, shakeX), now,
     )
   }
 

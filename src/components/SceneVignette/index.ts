@@ -1,0 +1,1 @@
+export { SceneVignette } from './SceneVignette'

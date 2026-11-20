@@ -7,6 +7,8 @@ import {
   computeBurstParticle,
   computeCameraPunch,
   computeDustPoint,
+  computeIridescenceTint,
+  getIridescenceStrength,
   computeJitterScale,
   computeLidSettleDegrees,
   computeRingEffect,
@@ -155,6 +157,34 @@ describe('computeSceneEffects', () => {
       }
 
       expect(computeDustPoint(2, 1000, 0, 0).scale).toBe(0)
+    })
+  })
+
+  describe('iridescence', () => {
+    it('shimmers only glossy metallic boxes, more the glossier', () => {
+      expect(getIridescenceStrength(0)).toBe(0)
+
+      expect(getIridescenceStrength(0.1)).toBe(0)
+
+      expect(getIridescenceStrength(0.3)).toBeGreaterThan(0)
+
+      expect(getIridescenceStrength(0.65)).toBe(1)
+
+      expect(computeIridescenceTint(0, 1, 1, 1000)).toEqual([0, 0, 0])
+    })
+
+    it('moves through the colours as the box turns and the time passes, within the amplitude', () => {
+      const first = computeIridescenceTint(1, 0, 0, 1000)
+      const turned = computeIridescenceTint(1, 1.5, 0, 1000)
+      const later = computeIridescenceTint(1, 0, 0, 3000)
+
+      expect(turned).not.toEqual(first)
+
+      expect(later).not.toEqual(first)
+
+      first.concat(turned, later).forEach(channel => {
+        expect(Math.abs(channel)).toBeLessThanOrEqual(0.16 + 1e-9)
+      })
     })
   })
 

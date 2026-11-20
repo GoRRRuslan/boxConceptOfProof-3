@@ -15,3 +15,9 @@ declare module '*.wav' {
 
   export default soundModule
 }
+
+declare module '*.png' {
+  const imageModule: number
+
+  export default imageModule
+}

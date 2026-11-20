@@ -23,6 +23,9 @@ final class BoxScene {
   private let effects = EffectNodes()
   private var seamMaterials: [[SCNMaterial]] = []
   private var appliedSeamIntensity: [Int: Double] = [:]
+  // The look of every box and the last iridescence tint written to its body (the glossy boxes shimmer).
+  private var cardLooks: [BoxLook] = []
+  private var appliedIridescence: [Int: [Double]] = [:]
   private var appliedGlowStrength: [Int: Double] = [:]
   private var lastFocusedCardIndex = -1
 
@@ -55,6 +58,9 @@ final class BoxScene {
     camera.zFar = 30
     camera.wantsHDR = true
     camera.wantsExposureAdaptation = false
+    // A touch of colour grading: slightly more contrast and saturation.
+    camera.contrast = 0.05
+    camera.saturation = 1.08
     camera.exposureOffset = 0
     camera.bloomIntensity = 0.5
     camera.bloomThreshold = 0.8
@@ -177,6 +183,8 @@ final class BoxScene {
       }
     }
     effects.setCardColors(looks.map { $0.colorLinear })
+    cardLooks = looks
+    appliedIridescence = [:]
   }
 
   // ------------------------------------------------------------------ Frame
@@ -199,6 +207,21 @@ final class BoxScene {
       matrix.columns.3 = SIMD4<Float>(
         centred.x + Float(card.translateX), centred.y + Float(card.translateY), centred.z + Float(card.translateZ), 1)
       root.simdTransform = matrix
+    }
+
+    // Iridescence: the glossy boxes shimmer with the turn of the box (a colour added to the base colour).
+    for (index, card) in frame.cards.enumerated() where index < cardLooks.count && card.isVisible {
+      let look = cardLooks[index]
+      let strength = getIridescenceStrength(look.metallic)
+      guard strength > 0 else { continue }
+      let tint = computeIridescenceTint(strength, card.yawRadians, card.pitchRadians, frame.nowMilliseconds)
+      if let previous = appliedIridescence[index], abs(previous[0] - tint[0]) + abs(previous[1] - tint[1]) + abs(previous[2] - tint[2]) <= 0.006 {
+        continue
+      }
+      appliedIridescence[index] = tint
+      let color = GlbLoader.linearColor(
+        max(0, look.colorLinear[0] + tint[0]), max(0, look.colorLinear[1] + tint[1]), max(0, look.colorLinear[2] + tint[2]))
+      bodyMaterials[index].forEach { $0.diffuse.contents = color }
     }
 
     // The lid (and its wordmark) of the focused box swings about the hinge pivot; a box that lost the focus is closed.

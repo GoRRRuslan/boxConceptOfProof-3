@@ -23,6 +23,8 @@ public struct SceneFrame: Equatable {
   public var seamIntensity: Double
   public var emissiveBoost: Double
   public var effects: EffectsLayout
+  // The time of this frame (milliseconds): the engines need it for the shimmer of the glossy boxes.
+  public var nowMilliseconds: Double
 }
 
 // The whole state machine of the scene: owns the scroll offset, the opening state, the drag physics and the
@@ -226,7 +228,8 @@ public final class SceneController {
       seamIntensity: seamIntensity, emissiveBoost: getRarityProfile(scene.rarityLevel).emissiveBoost,
       effects: computeEffectsLayout(
         scene: scene, now: now, focusProgress: focusProgress, tuckProgress: tuckProgress, seamIntensity: seamIntensity,
-        poses: poses, shakeX: shakeX))
+        poses: poses, shakeX: shakeX),
+      nowMilliseconds: now)
   }
 
   // True while something moves (or is about to): the render loop keeps running; otherwise the GPU rests.

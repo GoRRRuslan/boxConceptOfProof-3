@@ -69,6 +69,13 @@ object EffectsConfig {
   const val AURA_DEPTH_BEHIND_BOX = 0.9
   const val IN_FRONT_OF_BOX_MODEL_UNITS = 1.3
 
+  const val IRIDESCENCE_MINIMUM_METALLIC = 0.25
+  const val IRIDESCENCE_METALLIC_RANGE = 0.4
+  const val IRIDESCENCE_AMPLITUDE = 0.16
+  const val IRIDESCENCE_YAW_FREQUENCY = 1.3
+  const val IRIDESCENCE_PITCH_FREQUENCY = 0.9
+  const val IRIDESCENCE_TIME_FREQUENCY = 0.0006
+
   const val SWAY_RADIANS_PER_PIXEL_PER_SECOND = 0.00035
   const val SWAY_MAXIMUM_RADIANS = 0.25
   const val SWAY_RESPONSE_PER_SECOND = 10.0
@@ -212,7 +219,7 @@ fun computeDustPoint(dustIndex: Int, now: Double, anticipationLinear: Double, vi
     cos(angle) * radius,
     sin(now * 0.0007 + index) * 0.5 + (fraction(index * 0.61) - 0.5) * 1.6,
     -(0.8 + 0.9 * fraction(index * 0.53)),
-    (EffectsConfig.DUST_SIZE + 0.12 * fraction(index * 0.77)) * visibility,
+    (EffectsConfig.DUST_SIZE + 0.12 * fraction(index * 0.77)) * (0.6 + 1.0 * fraction(index * 0.53)) * visibility,
   )
 }
 
@@ -243,6 +250,19 @@ fun stepScrollSway(previousSway: Double, scrollVelocityPixelsPerSecond: Double, 
     min(EffectsConfig.SWAY_MAXIMUM_RADIANS, -scrollVelocityPixelsPerSecond * EffectsConfig.SWAY_RADIANS_PER_PIXEL_PER_SECOND),
   )
   return previousSway + (target - previousSway) * min(1.0, deltaSeconds * EffectsConfig.SWAY_RESPONSE_PER_SECOND)
+}
+
+/** 0..1 how much a box with this metallic finish shimmers (iridescence). */
+fun getIridescenceStrength(metallic: Double): Double =
+  clampToUnitInterval((metallic - EffectsConfig.IRIDESCENCE_MINIMUM_METALLIC) / EffectsConfig.IRIDESCENCE_METALLIC_RANGE)
+
+/** Colour shift (linear RGB, added to the base colour) of a shimmering box turned to yaw / pitch. */
+fun computeIridescenceTint(strength: Double, yawRadians: Double, pitchRadians: Double, now: Double): List<Double> {
+  if (strength <= 0) return listOf(0.0, 0.0, 0.0)
+  val phase = yawRadians * EffectsConfig.IRIDESCENCE_YAW_FREQUENCY + pitchRadians * EffectsConfig.IRIDESCENCE_PITCH_FREQUENCY +
+    now * EffectsConfig.IRIDESCENCE_TIME_FREQUENCY
+  val amplitude = strength * EffectsConfig.IRIDESCENCE_AMPLITUDE
+  return listOf(amplitude * cos(phase), amplitude * cos(phase + 2.094), amplitude * cos(phase + 4.189))
 }
 
 // ------------------------------- Layout -------------------------------- //

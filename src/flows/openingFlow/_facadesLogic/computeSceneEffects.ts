@@ -9,6 +9,12 @@ import {
   DUST_PULL_IN_FRACTION,
   DUST_SIZE,
   HIT_STOP_MILLISECONDS,
+  IRIDESCENCE_AMPLITUDE,
+  IRIDESCENCE_METALLIC_RANGE,
+  IRIDESCENCE_MINIMUM_METALLIC,
+  IRIDESCENCE_PITCH_FREQUENCY,
+  IRIDESCENCE_TIME_FREQUENCY,
+  IRIDESCENCE_YAW_FREQUENCY,
   LID_SETTLE_DECAY_MILLISECONDS,
   LID_SETTLE_DEGREES,
   LID_SETTLE_PERIOD_MILLISECONDS,
@@ -253,8 +259,31 @@ export const computeDustPoint = (
     x: Math.cos(angle) * radius,
     y: Math.sin(nowMilliseconds * 0.0007 + dustIndex) * 0.5 + (fraction(dustIndex * 0.61) - 0.5) * 1.6,
     z: -(0.8 + 0.9 * fraction(dustIndex * 0.53)),
-    scale: (DUST_SIZE + 0.12 * fraction(dustIndex * 0.77)) * visibility,
+    // Depth of field: a mote far behind the box is out of focus, so it is drawn bigger and softer.
+    scale: (DUST_SIZE + 0.12 * fraction(dustIndex * 0.77)) * (0.6 + 1.0 * fraction(dustIndex * 0.53)) * visibility,
   }
+}
+
+// 0..1 how much a box with this metallic finish shimmers.
+export const getIridescenceStrength = (metallic: number): number => {
+  return clampToUnitInterval((metallic - IRIDESCENCE_MINIMUM_METALLIC) / IRIDESCENCE_METALLIC_RANGE)
+}
+
+// Colour shift (linear RGB, added to the base colour) of a shimmering box turned to `yawRadians` / `pitchRadians`.
+export const computeIridescenceTint = (
+  strength: number,
+  yawRadians: number,
+  pitchRadians: number,
+  nowMilliseconds: number,
+): [number, number, number] => {
+  if (strength <= 0) {
+    return [0, 0, 0]
+  }
+
+  const phase = yawRadians * IRIDESCENCE_YAW_FREQUENCY + pitchRadians * IRIDESCENCE_PITCH_FREQUENCY + nowMilliseconds * IRIDESCENCE_TIME_FREQUENCY
+  const amplitude = strength * IRIDESCENCE_AMPLITUDE
+
+  return [amplitude * Math.cos(phase), amplitude * Math.cos(phase + 2.094), amplitude * Math.cos(phase + 4.189)]
 }
 
 // Alpha of the coloured glow behind a box.

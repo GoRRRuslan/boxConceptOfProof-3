@@ -59,6 +59,15 @@ export const AURA_LIST_ALPHA = 0.1
 export const AURA_FOCUSED_ALPHA = 0.14
 export const AURA_SCALE = 2.4
 
+// Iridescence of the glossy boxes: a slow shimmer of colour (gold -> magenta -> cyan) that moves with the turn of the box. Added to
+// the base colour (linear RGB). Only boxes with a metallic finish shimmer; the strength grows with the finish.
+export const IRIDESCENCE_MINIMUM_METALLIC = 0.25
+export const IRIDESCENCE_METALLIC_RANGE = 0.4
+export const IRIDESCENCE_AMPLITUDE = 0.16
+export const IRIDESCENCE_YAW_FREQUENCY = 1.3
+export const IRIDESCENCE_PITCH_FREQUENCY = 0.9
+export const IRIDESCENCE_TIME_FREQUENCY = 0.0006
+
 // Sway of the boxes when the list is scrolled fast.
 export const SWAY_RADIANS_PER_PIXEL_PER_SECOND = 0.00035
 export const SWAY_MAXIMUM_RADIANS = 0.25

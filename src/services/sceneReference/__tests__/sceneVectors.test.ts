@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 
+import { computeIridescenceTint, getIridescenceStrength } from '@flows/openingFlow/_facadesLogic/computeSceneEffects'
 import {
   ESceneCommandKind as K,
   type ISceneCommand,
@@ -112,6 +113,20 @@ const scenarios: IScenario[] = [
   },
 ]
 
+// Direct samples of the iridescence functions (the engines apply them per box, so they are not part of a scene frame).
+const iridescenceSamples = [
+  [0, 0, 0, 5000],
+  [0.1, 1, 0.5, 5000],
+  [0.3, 0.7, 0.3, 1234],
+  [0.45, -1.2, 0.4, 98765],
+  [0.65, 2.4, -0.2, 4242.5],
+  [1, 3.1, 0.9, 777777],
+].map(([metallic, yawRadians, pitchRadians, nowMilliseconds]) => {
+  const strength = getIridescenceStrength(metallic)
+
+  return { metallic, yawRadians, pitchRadians, nowMilliseconds, strength, tint: computeIridescenceTint(strength, yawRadians, pitchRadians, nowMilliseconds) }
+})
+
 const runScenario = (scenario: IScenario) => {
   const reference = new SceneReference(VIEWPORT.width, VIEWPORT.height)
   const frames = scenario.frames.map((frame, frameIndex) => {
@@ -130,7 +145,7 @@ const runScenario = (scenario: IScenario) => {
 }
 
 describe('scene test vectors (shared with the Swift and Kotlin tests)', () => {
-  const generated = { tolerance: 1e-9, scenarios: scenarios.map(runScenario) }
+  const generated = { tolerance: 1e-9, scenarios: scenarios.map(runScenario), iridescenceSamples }
 
   it('match the committed vectors (UPDATE_SCENE_VECTORS=1 rewrites them)', () => {
     if (process.env.UPDATE_SCENE_VECTORS === '1') {
@@ -138,6 +153,8 @@ describe('scene test vectors (shared with the Swift and Kotlin tests)', () => {
     }
 
     const committed = JSON.parse(fs.readFileSync(VECTORS_PATH, 'utf8')) as typeof generated
+
+    expect(committed.iridescenceSamples).toEqual(JSON.parse(JSON.stringify(generated.iridescenceSamples)))
 
     expect(committed.scenarios.map(scenario => scenario.name)).toEqual(generated.scenarios.map(scenario => scenario.name))
 
