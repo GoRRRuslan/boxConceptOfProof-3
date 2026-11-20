@@ -61,7 +61,6 @@ gantt
 
 ### Boxes pop in one after another
 
-![](media/animations/01-entrance-start.png) ![](media/animations/01-entrance-middle.png) ![](media/animations/01-entrance-done.png)
 
 On the first appearance the boxes grow from nothing with a small overshoot, 90 ms apart, while their card texts fade in from below with the same rhythm.
 
@@ -99,7 +98,6 @@ Switching between Boxes and Collection cross-fades. The inactive screen stays mo
 
 ### Camera push-in (dolly)
 
-![](media/animations/02-focus-dolly.png) ![](media/animations/02-inspect-auto-rotate.png)
 
 Tapping a card sends its box to the middle in 500 ms. It also moves towards the camera with a small overshoot (0.9 units), so perspective makes it swell like a push-in. All other boxes shrink away.
 
@@ -107,7 +105,6 @@ Tapping a card sends its box to the middle in 500 ms. It also moves towards the 
 
 While a box is inspected the **Back** button sits in the top left corner and the box name and price are centred on the screen below it, in line with the button at the bottom.
 
-![](media/animations/02-inspect-header.png)
 
 ### Gestures on the focused box
 
@@ -129,9 +126,6 @@ While a box is inspected the **Back** button sits in the top left corner and the
 
 ### Anticipation, lid, inner light
 
-| Anticipation (800 ms) | Lid opens, light from inside (1100 ms) |
-|---|---|
-| ![](media/animations/04-anticipation.png) | ![](media/animations/04-lid-opens-inner-glow.png) |
 
 1. **Anticipation.** The box eases back to its base pose, then shakes harder and harder and swells by 10 % for 800 ms. A rumbling sound and a haptic buzz go with it.
 2. **Lid.** It swings open about its real hinge with a small overshoot (`easeOutBack`), 1100 ms.
@@ -157,9 +151,6 @@ The prize is revealed on a clean stage. From the top: a **rarity pill**, the **w
 | Extra haptic taps | 0 | 1 | 2 | 3 |
 | Sound | short chime | rising triad | rising triad (same as Rare) | full fanfare |
 
-| Common | Rare (current layout, no tab bar) | Legendary |
-|---|---|---|
-| ![](media/animations/05-reveal-common.png) | ![](media/animations/05-reveal-rare.png) | ![](media/animations/06-reveal-legendary-swipe.png) |
 
 The Common and Legendary pictures were taken before the tab bar was hidden during a reveal; everything else on them is current.
 
@@ -171,9 +162,6 @@ What happens, in order:
 4. The **price, name and brand** fade in from below after 450 ms.
 5. After 1.8 s the **opened box is put away**: it shrinks to nothing and sinks a little in 700 ms. Only then does the **Done** button appear, centred at the bottom, so the prize is alone on the screen. While a prize is shown the bottom tab bar (Boxes / Collection) is invisible and cannot be tapped; its place is kept so the 3D scene does not move. Done brings the tab bar back and flies the box home.
 
-| Still open, just revealed | Put away |
-|---|---|
-| ![](media/animations/06-legendary-box-still-open.png) | ![](media/animations/06-reveal-legendary-swipe.png) |
 
 - **Where:** the tab bar is hidden through the `isTabBarHidden` route parameter set by `useCatalogueFacade` and read in `TabNavigator.tsx`. Also: `openingFlow/screens/OpeningOverlay/` (`OpeningOverlay.tsx` and the `RevealEffects`, `WatchRevealImage`, `Particle` parts, each with its hook in `_facades/`), `openingFlow/_config/rarityConfig.ts` (the table above), `getWatchRarity.ts`, `computeParticleTrajectory.ts`, `computeOpeningPose.ts` (`tuckProgress`), `openingSceneState.ts` (`startTuck`).
 - **Two design decisions worth knowing:**
@@ -184,9 +172,6 @@ What happens, in order:
 
 ## 6. Collection
 
-| Fade in, rows slide up | Detail sheet |
-|---|---|
-| ![](media/animations/07-collection.png) | ![](media/animations/08-collection-detail.png) |
 
 - Rows slide up one after another (`FadeInDown`, 400 ms). Each row shows the rarity in its colour.
 - Tapping a row opens a detail sheet with the large photo and a border in the rarity colour.
@@ -249,3 +234,31 @@ Every sound is synthesised by a script (`yarn assetsSounds`, `scripts/assets/gen
 - All screenshots here are from iOS (simulator). Android runs the same code and the same render settings, but its look was not re-checked after the final polish of the reveal.
 - Sounds and device tilt are covered by unit tests and run on the device, but they cannot be heard or felt in a screenshot, and tilt cannot be tested in the simulator.
 - The opening flow was not measured separately for FPS; the catalogue scroll was.
+
+## Screenshots of every step (final release builds)
+
+| Step | iOS (iPhone 17 Simulator) | Android (MW_Pixel9_API_37 Emulator) |
+|---|---|---|
+| Catalogue, entrance just started | ![](media/ios-01-catalogue-entrance-start.png) | ![](media/android-01-catalogue-entrance-start.png) |
+| Catalogue | ![](media/ios-02-catalogue.png) | ![](media/android-02-catalogue.png) |
+| Scrolled (boxes follow their cards) | ![](media/ios-03-scrolled.png) | ![](media/android-03-scrolled.png) |
+| Inspect (Back top left, name and price centred) | ![](media/ios-05-inspect.png) | ![](media/android-05-inspect.png) |
+| After a drag | ![](media/ios-06-dragged.png) | ![](media/android-06-dragged.png) |
+| Bought (balance updated), ready to open | ![](media/ios-07-ready-balance.png) | ![](media/android-07-ready-balance.png) |
+| Anticipation | ![](media/ios-08-anticipation.png) | ![](media/android-08-anticipation.png) |
+| Lid opening | ![](media/ios-09-lid-opening-glow.png) | ![](media/android-09-lid-opening-glow.png) |
+| Reveal (Common) | ![](media/ios-10-reveal-common.png) | ![](media/android-10-reveal-common.png) |
+| Box put away, Done | ![](media/ios-11-box-put-away-done.png) | ![](media/android-11-box-put-away-done.png) |
+| Collection | ![](media/ios-12-collection.png) | ![](media/android-13-collection.png) |
+| Detail sheet | ![](media/ios-13-collection-detail.png) | ![](media/android-14-collection-detail.png) |
+
+Not captured: pinch, press squeeze mid-flight, Rare / Epic / Legendary reveals on the final builds (an Epic reveal on iOS and a Rare reveal on Android were seen in the flow checks, but not kept as final screenshots), the swipe-up open. They are listed in [TEST_CHECKLIST.md](TEST_CHECKLIST.md) as not re-run.
+
+## What differs from the first version (react-native-filament)
+
+- **Engines:** SceneKit on iOS (the first version used Filament on both). Lights, shadows, ambient occlusion and bloom are SceneKit's equivalents, tuned by eye, so the iOS look differs a little: a different tone curve, softer highlights, a generated studio environment instead of Filament's KTX.
+- **Light from inside the box** is weaker on iOS than in the first version (SceneKit emission is not tuned up yet; Common's grey glow is hardly visible). Android shows a faint glow.
+- **Box size:** the iOS boxes are about 10 % smaller in their slots than in the first version (SceneKit's field-of-view mapping); layout is identical otherwise.
+- **Background:** transparent over the app background on both platforms.
+- **Behaviour is otherwise the same:** same numbers, same state machine (proved by the shared vectors), but timers (sounds, reveal) stay in JavaScript.
+- **Startup:** the first frames on Android compile Filament materials (about 1 s of slow frames, see PERFORMANCE.md).
