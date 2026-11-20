@@ -21,6 +21,16 @@ import expo.modules.kotlin.views.ExpoView
  * The native 3D view. It sits behind the (transparent) cards of the list, owns the render loop and renders only while the
  * scene controller says something moves.
  */
+/** Startup timing in the log (`adb logcat -s MysteryScene`): milliseconds since the process started. */
+internal object StartupTrace {
+  private val seen = HashSet<String>()
+
+  fun mark(event: String) {
+    if (!seen.add(event)) return
+    android.util.Log.i("MysteryScene", "startup $event at ${android.os.SystemClock.uptimeMillis() - android.os.Process.getStartUptimeMillis()} ms since process start")
+  }
+}
+
 class MysterySceneView(context: Context, appContext: AppContext) : ExpoView(context, appContext), SceneWaker {
   private val onModelLoaded by EventDispatcher<Map<String, Any>>()
   private val onFrameStats by EventDispatcher<Map<String, Any>>()
@@ -54,10 +64,11 @@ class MysterySceneView(context: Context, appContext: AppContext) : ExpoView(cont
   }
 
   init {
+    StartupTrace.mark("viewCreated")
     Filament.init()
     Gltfio.init()
     Utils.init()
-    setBackgroundColor(0xFF0B0D12.toInt())
+    textureView.isOpaque = false
     addView(textureView)
     SceneHost.waker = this
 
@@ -67,6 +78,7 @@ class MysterySceneView(context: Context, appContext: AppContext) : ExpoView(cont
       override fun onNativeWindowChanged(surface: Surface) {
         swapChain?.let { scene.engine.destroySwapChain(it) }
         swapChain = scene.engine.createSwapChain(surface, uiHelper.swapChainFlags)
+        StartupTrace.mark("surfaceReady")
         displayHelper.attach(scene.renderer, textureView.display)
         wakeRenderLoop()
       }
@@ -85,7 +97,7 @@ class MysterySceneView(context: Context, appContext: AppContext) : ExpoView(cont
         wakeRenderLoop()
       }
     }
-    uiHelper.isOpaque = true
+    uiHelper.isOpaque = false
     uiHelper.attachTo(textureView)
     loadModel(scene)
   }
@@ -137,6 +149,7 @@ class MysterySceneView(context: Context, appContext: AppContext) : ExpoView(cont
     try {
       scene.loadModel()
       isModelReady = true
+      StartupTrace.mark("modelLoaded")
       scene.setCards(pendingLooks)
       SceneHost.command { controller, now -> controller.markModelReady(now) }
       onModelLoaded(emptyMap())
@@ -146,6 +159,7 @@ class MysterySceneView(context: Context, appContext: AppContext) : ExpoView(cont
   }
 
   fun setCards(looks: List<BoxLook>) {
+    if (looks.isNotEmpty()) StartupTrace.mark("cardsReceived")
     pendingLooks = looks
     SceneHost.command { controller, now -> controller.setCardCount(looks.size, now) }
     if (isModelReady) boxScene?.setCards(looks)
@@ -157,6 +171,7 @@ class MysterySceneView(context: Context, appContext: AppContext) : ExpoView(cont
     val height = bottom - top
     textureView.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY))
     textureView.layout(0, 0, width, height)
+    StartupTrace.mark("layout ${width}x$height")
     val density = resources.displayMetrics.density.toDouble()
     SceneHost.setViewport(width / density, height / density)
   }
@@ -184,6 +199,7 @@ class MysterySceneView(context: Context, appContext: AppContext) : ExpoView(cont
     val deltaMilliseconds = deltaSeconds * 1000
     lastFrameTimeNanos = frameTimeNanos
 
+    StartupTrace.mark("firstRenderFrame")
     val result = SceneHost.computeFrame(nowMilliseconds, deltaSeconds) ?: return
     scene.apply(result.frame)
 
@@ -192,6 +208,7 @@ class MysterySceneView(context: Context, appContext: AppContext) : ExpoView(cont
       scene.renderer.endFrame()
     }
 
+    if (result.frame.cards.any { it.isVisible && it.scale > 0.01 }) StartupTrace.mark("firstFrameWithBoxes")
     if (hadPreviousFrame) record(deltaMilliseconds, nowMilliseconds)
 
     if (result.needsMoreFrames) {

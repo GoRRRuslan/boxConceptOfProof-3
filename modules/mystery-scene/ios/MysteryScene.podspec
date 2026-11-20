@@ -15,7 +15,7 @@ Pod::Spec.new do |s|
 
   # SceneCore/Sources holds the pure maths and state machine (also built and tested as a Swift package).
   s.source_files = '*.swift', 'SceneCore/Sources/SceneCore/*.swift'
-  s.resource_bundles = { 'MysteryScene' => ['../assets/box.glb'] }
+  s.resource_bundles = { 'MysteryScene' => ['Assets/box.glb'] }
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
     'SWIFT_COMPILATION_MODE' => 'wholemodule'

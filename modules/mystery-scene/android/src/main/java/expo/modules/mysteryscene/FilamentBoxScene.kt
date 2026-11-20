@@ -102,8 +102,12 @@ class FilamentBoxScene(private val context: Context) {
       threshold = true
       highlight = 1000f
     }
-    skybox = Skybox.Builder().color(BACKGROUND[0], BACKGROUND[1], BACKGROUND[2], 1f).build(engine)
-    scene.skybox = skybox
+    // Transparent: the app's own background (#0B0D12) shows through, exactly as behind the other screens.
+    view.blendMode = View.BlendMode.TRANSLUCENT
+    renderer.clearOptions = Renderer.ClearOptions().apply {
+      clear = true
+      clearColor = floatArrayOf(0f, 0f, 0f, 0f)
+    }
   }
 
   private fun configureCamera() {
@@ -171,9 +175,12 @@ class FilamentBoxScene(private val context: Context) {
       appliedGlowStrength.clear()
       lastFocusedCardIndex = -1
       if (looks.isNotEmpty()) {
+        val traceStart = android.os.SystemClock.uptimeMillis()
         val created = arrayOfNulls<FilamentInstance>(looks.size)
         val newAsset = assetLoader.createInstancedAsset(bytes, created) ?: return
+        val created1 = android.os.SystemClock.uptimeMillis()
         resourceLoader.loadResources(newAsset)
+        android.util.Log.i("MysteryScene", "startup createInstancedAsset ${created1 - traceStart} ms, loadResources ${android.os.SystemClock.uptimeMillis() - created1} ms")
         newAsset.releaseSourceData()
         asset = newAsset
         instances = created.filterNotNull().map { describe(newAsset, it) }

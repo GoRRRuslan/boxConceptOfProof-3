@@ -1,6 +1,21 @@
 import ExpoModulesCore
 import SceneKit
 import UIKit
+import QuartzCore
+
+/// Startup timing in the log: milliseconds since the first mark (the view's creation).
+enum StartupTrace {
+  private static var seen = Set<String>()
+  private static let lock = NSLock()
+  private static let origin = CACurrentMediaTime()
+
+  static func mark(_ event: String) {
+    lock.lock()
+    let isNew = seen.insert(event).inserted
+    lock.unlock()
+    if isNew { NSLog("[MysteryScene] startup %@ at %.0f ms since the view was created", event, (CACurrentMediaTime() - origin) * 1000) }
+  }
+}
 
 // The native 3D view. It sits behind the (transparent) cards of the list, owns the render loop and renders only
 // while the SceneCore state machine says something moves.
@@ -25,6 +40,7 @@ final class MysterySceneView: ExpoView, SCNSceneRendererDelegate, SceneWaker {
 
   required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
+    StartupTrace.mark("viewCreated")
     clipsToBounds = true
     backgroundColor = BoxScene.backgroundColor
     sceneView.frame = bounds
@@ -55,6 +71,7 @@ final class MysterySceneView: ExpoView, SCNSceneRendererDelegate, SceneWaker {
         DispatchQueue.main.async {
           guard let self else { return }
           self.isModelReady = true
+          StartupTrace.mark("modelLoaded")
           self.boxScene.setCards(self.pendingLooks)
           SceneHost.shared.command { controller, now in controller.markModelReady(now: now) }
           self.onModelLoaded([:])
@@ -66,6 +83,7 @@ final class MysterySceneView: ExpoView, SCNSceneRendererDelegate, SceneWaker {
   }
 
   func setCards(_ looks: [BoxLook]) {
+    if !looks.isEmpty { StartupTrace.mark("cardsReceived") }
     pendingLooks = looks
     SceneHost.shared.command { controller, now in controller.setCardCount(looks.count, now: now) }
     if isModelReady { boxScene.setCards(looks) }
@@ -140,6 +158,7 @@ final class MysterySceneView: ExpoView, SCNSceneRendererDelegate, SceneWaker {
     lastUpdateTime = now
     guard let result = SceneHost.shared.computeFrame(now: now, deltaSeconds: deltaSeconds) else { return }
 
+    if result.frame.cards.contains(where: { $0.isVisible && $0.scale > 0.01 }) { StartupTrace.mark("firstFrameWithBoxes") }
     SCNTransaction.begin()
     SCNTransaction.animationDuration = 0
     boxScene.apply(result.frame)
