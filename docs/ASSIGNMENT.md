@@ -20,12 +20,12 @@ Make your own decisions about the behaviors and technical considerations needed 
 
 | File | Description |
 | --- | --- |
-| [Box model](assets/box/designer-box-2-v1-icy.glb) | Self-contained glTF 2.0 binary with separate box parts and embedded materials/textures. No animation clips. |
-| [Model documentation](assets/box/MODEL.md) | Part names, coordinates, hinge details, and material notes. |
-| [Box reference image](assets/box/reference.png) | Visual reference for the supplied box. |
-| [Casio watch](assets/watches/casio.png) | Transparent PNG, 1019 × 1544. |
-| [GMT watch](assets/watches/gmt.png) | Transparent PNG, 1019 × 1544. |
-| [Perpetual watch](assets/watches/perpetual.png) | Transparent PNG, 1019 × 1544. |
-| [Sky-Dweller watch](assets/watches/sky-dweller.png) | Transparent PNG, 1019 × 1544. |
+| [Box model](../assets-source/box/designer-box-2-v1-icy.glb) | Self-contained glTF 2.0 binary with separate box parts and embedded materials/textures. No animation clips. |
+| [Model documentation](MODEL.md) | Part names, coordinates, hinge details, and material notes. |
+| [Box reference image](reference.png) | Visual reference for the supplied box. |
+| [Casio watch](../assets-source/watches/casio.png) | Transparent PNG, 1019 × 1544. |
+| [GMT watch](../assets-source/watches/gmt.png) | Transparent PNG, 1019 × 1544. |
+| [Perpetual watch](../assets-source/watches/perpetual.png) | Transparent PNG, 1019 × 1544. |
+| [Sky-Dweller watch](../assets-source/watches/sky-dweller.png) | Transparent PNG, 1019 × 1544. |
 
 The watch assets are 2D images. The box model can be reused with different material colors for the catalogue. Choose your own mock names, prices, and box contents.

@@ -2,7 +2,7 @@
 
 ## File and structure
 
-[designer-box-2-v1-icy.glb](designer-box-2-v1-icy.glb) is a glTF 2.0 binary, 1,322,324 bytes. Geometry, base materials, and two wordmark texture images are embedded. It has no external buffer or image dependencies, animation clips, or skeleton.
+[designer-box-2-v1-icy.glb](../assets-source/box/designer-box-2-v1-icy.glb) is a glTF 2.0 binary, 1,322,324 bytes. Geometry, base materials, and two wordmark texture images are embedded. It has no external buffer or image dependencies, animation clips, or skeleton.
 
 | Node name | Part | Opening behavior |
 | --- | --- | --- |
@@ -47,4 +47,4 @@ The model includes these named materials:
 
 The GLB uses standard PBR materials and the optional `KHR_materials_clearcoat` extension. It needs scene lighting supplied by your renderer; no lights or environment map are included. The embedded materials are sufficient to display the box. Material customization and lighting will affect its appearance; [reference.png](reference.png) is a visual reference, not a pixel-matching target.
 
-The four [watch images](../watches/) are transparent PNGs and are separate from the box model.
+The four [watch images](../assets-source/watches/) are transparent PNGs and are separate from the box model.

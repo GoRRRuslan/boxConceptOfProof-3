@@ -152,7 +152,6 @@ The prize is revealed on a clean stage. From the top: a **rarity pill**, the **w
 | Sound | short chime | rising triad | rising triad (same as Rare) | full fanfare |
 
 
-The Common and Legendary pictures were taken before the tab bar was hidden during a reveal; everything else on them is current.
 
 What happens, in order:
 
