@@ -83,18 +83,18 @@ class FilamentBoxScene(private val context: Context) {
     view.scene = scene
     view.camera = camera
     // Same post processing as the previous (JavaScript driven) version: FXAA, dithering, shadows, ambient occlusion, bloom.
-    view.antiAliasing = View.AntiAliasing.FXAA
-    view.dithering = View.Dithering.TEMPORAL
+    view.antiAliasing = View.AntiAliasing.NONE
+    view.dithering = View.Dithering.NONE
     view.isPostProcessingEnabled = true
     view.ambientOcclusionOptions = View.AmbientOcclusionOptions().apply {
-      enabled = true
+      enabled = false
       radius = 0.35f
       power = 1.2f
       intensity = 1f
       quality = View.QualityLevel.LOW
     }
     view.bloomOptions = View.BloomOptions().apply {
-      enabled = true
+      enabled = false
       strength = 0.22f
       resolution = 360
       levels = 5
@@ -128,7 +128,7 @@ class FilamentBoxScene(private val context: Context) {
     data class LightSpec(val intensity: Float, val kelvin: Float, val direction: DoubleArray, val castsShadows: Boolean)
 
     val specs = listOf(
-      LightSpec(11_000f, 5_600f, doubleArrayOf(0.45, -0.75, -0.55), true),
+      LightSpec(11_000f, 5_600f, doubleArrayOf(0.45, -0.75, -0.55), false),
       LightSpec(5_500f, 9_000f, doubleArrayOf(-0.65, -0.25, 0.7), false),
       LightSpec(1_800f, 6_500f, doubleArrayOf(-0.2, 0.9, -0.4), false),
     )
@@ -189,8 +189,8 @@ class FilamentBoxScene(private val context: Context) {
           box.allEntities.forEach { entity ->
             val renderable = renderables.getInstance(entity)
             if (renderable != 0) {
-              renderables.setCastShadows(renderable, true)
-              renderables.setReceiveShadows(renderable, true)
+              renderables.setCastShadows(renderable, false)
+              renderables.setReceiveShadows(renderable, false)
             }
           }
         }
@@ -296,6 +296,30 @@ class FilamentBoxScene(private val context: Context) {
       materialInstance(entity, primitive)?.setParameter(
         "emissiveFactor", (color[0] * strength).toFloat(), (color[1] * strength).toFloat(), (color[2] * strength).toFloat(), 1f,
       )
+    }
+  }
+
+  // Progressive quality: the first boxes are drawn with the cheap pipeline (Filament compiles the glTF materials and the post
+  // processing shaders in the background, which takes seconds on the emulator and would leave the list empty). Once boxes are
+  // on screen the full look is switched on: FXAA, dithering, ambient occlusion, bloom (shadows are not re-enabled, see docs).
+  fun enableFullQuality() {
+    view.antiAliasing = View.AntiAliasing.FXAA
+    view.dithering = View.Dithering.TEMPORAL
+    view.ambientOcclusionOptions = View.AmbientOcclusionOptions().apply {
+      enabled = true
+      radius = 0.35f
+      power = 1.2f
+      intensity = 1f
+      quality = View.QualityLevel.LOW
+    }
+    view.bloomOptions = View.BloomOptions().apply {
+      enabled = true
+      strength = 0.22f
+      resolution = 360
+      levels = 5
+      quality = View.QualityLevel.LOW
+      threshold = true
+      highlight = 1000f
     }
   }
 

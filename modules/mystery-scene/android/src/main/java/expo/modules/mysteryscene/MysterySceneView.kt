@@ -183,6 +183,8 @@ class MysterySceneView(context: Context, appContext: AppContext) : ExpoView(cont
   }
 
   private var keepRenderingUntilMilliseconds = 0.0
+  private var fullQualityAtMilliseconds = 0.0
+  private var isFullQuality = false
 
   private fun startRenderLoop() {
     idleFrames = 0
@@ -214,7 +216,15 @@ class MysterySceneView(context: Context, appContext: AppContext) : ExpoView(cont
       didRender = true
     }
 
-    if (result.frame.cards.any { it.isVisible && it.scale > 0.01 }) StartupTrace.mark("firstFrameWithBoxes")
+    if (result.frame.cards.any { it.isVisible && it.scale > 0.01 }) {
+      StartupTrace.mark("firstFrameWithBoxes")
+      if (fullQualityAtMilliseconds == 0.0) fullQualityAtMilliseconds = nowMilliseconds + FULL_QUALITY_DELAY_MILLISECONDS
+    }
+    if (fullQualityAtMilliseconds > 0.0 && !isFullQuality && nowMilliseconds >= fullQualityAtMilliseconds) {
+      isFullQuality = true
+      scene.enableFullQuality()
+      StartupTrace.mark("fullQuality")
+    }
     if (hadPreviousFrame) record(deltaMilliseconds, nowMilliseconds)
 
     // The loop may only rest after frames have really been drawn: a frame skipped because the surface is not ready (or Filament
@@ -255,5 +265,6 @@ class MysterySceneView(context: Context, appContext: AppContext) : ExpoView(cont
 
   private companion object {
     const val KEEP_RENDERING_MILLISECONDS = 15000.0
+    const val FULL_QUALITY_DELAY_MILLISECONDS = 2500.0
   }
 }
