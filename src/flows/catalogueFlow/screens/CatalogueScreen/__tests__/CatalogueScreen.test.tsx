@@ -29,6 +29,8 @@ const baseFacade = {
   balanceInCents: 100_000,
   loadingText: 'Loading boxes…',
   errorText: 'Could not load the boxes.',
+  resetBalanceLabelText: 'Reset balance',
+  handleResetBalancePress: jest.fn(),
   retryLabelText: 'Try again',
   isLoadingBoxes: false,
   sceneEpoch: 0,

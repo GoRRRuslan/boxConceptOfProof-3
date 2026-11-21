@@ -29,6 +29,7 @@ const CatalogueScreen = () => {
     loadingText,
     errorText,
     retryLabelText,
+    resetBalanceLabelText,
     isLoadingBoxes,
     isSceneReady,
     sceneEpoch,
@@ -47,6 +48,7 @@ const CatalogueScreen = () => {
     handleListLayout,
     handleScroll,
     handleRetryPress,
+    handleResetBalancePress,
     handleCardPressIn,
     handleCardPressOut,
   } = useCatalogueFacade()
@@ -118,6 +120,8 @@ const CatalogueScreen = () => {
         titleText={titleText}
         trailingLabelText={balanceLabelText}
         trailingValueInCents={balanceInCents}
+        actionLabelText={resetBalanceLabelText}
+        onActionPress={handleResetBalancePress}
         testID="balanceHeader"
       />
       <View style={styles.listRegion} onLayout={handleListLayout}>

@@ -18,6 +18,17 @@ export const makeStyles = (theme: IThemePalette) =>
     trailing: {
       alignItems: 'flex-end',
     },
+    trailingLabelRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: ms(10),
+    },
+    action: {
+      fontSize: ms(12),
+      fontWeight: '600',
+      color: theme.Colors.accent,
+      textDecorationLine: 'underline',
+    },
     trailingLabel: {
       fontSize: ms(12),
       color: theme.Colors.textSecondary,

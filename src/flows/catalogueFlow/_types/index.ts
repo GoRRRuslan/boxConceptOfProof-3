@@ -40,6 +40,7 @@ export interface ICatalogueFacade {
   loadingText: string
   errorText: string
   retryLabelText: string
+  resetBalanceLabelText: string
   isLoadingBoxes: boolean
   // False until the 3D scene is ready to be shown: the loader stays up until then, the list is hidden.
   isSceneReady: boolean
@@ -63,6 +64,7 @@ export interface ICatalogueFacade {
   handleListLayout: (event: LayoutChangeEvent) => void
   handleScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void
   handleRetryPress: () => void
+  handleResetBalancePress: () => void
   handleCardPressIn: (boxIdentifier: EBoxIdentifier) => void
   handleCardPressOut: () => void
 }

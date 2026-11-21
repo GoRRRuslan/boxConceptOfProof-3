@@ -26,7 +26,12 @@
     "notEnoughBalance": "Not enough balance",
     "loading": "Loading boxes…",
     "error": "Could not load the boxes.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "resetBalance": "Reset balance",
+    "resetBalanceTitle": "Reset the balance?",
+    "resetBalanceMessage": "The balance goes back to {{amount}}. Your watches stay in the collection.",
+    "resetBalanceConfirm": "Reset",
+    "resetBalanceCancel": "Cancel"
   },
   "opening": {
     "buy": "Buy for {{price}}",

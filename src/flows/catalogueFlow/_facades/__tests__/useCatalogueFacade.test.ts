@@ -1,10 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react-native'
 import { createElement, type ReactNode } from 'react'
+import { Alert } from 'react-native'
 
 import '@i18next/i18init'
 import { useCatalogueFacade } from '@flows/catalogueFlow/_facades/useCatalogueFacade'
 import { MysteryScene } from '@mysteryScene'
+import { INITIAL_BALANCE_IN_CENTS } from '@models/mainStorage/WalletStore/initialState'
 import useStore from '@models/mainStorage/_storeConfigured'
 import { resetAllSlices } from '@models/mainStorage/_storeConfigured/ResetterStore'
 import { mockApiSettings, resetMockApiSettings } from '@networking/api/MysteryBoxApi/_config/mockApiSettings'
@@ -131,6 +133,32 @@ describe('useCatalogueFacade', () => {
     expect(mockSetParams).toHaveBeenCalledWith({ isTabBarHidden: false })
 
     expect(mockSetParams).not.toHaveBeenCalledWith({ isTabBarHidden: true })
+  })
+
+  it('resets the balance to the starting one after a confirmation, and keeps it when nothing is confirmed', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
+
+    const { result } = await renderHook(() => useCatalogueFacade(), { wrapper: createWrapper() })
+
+    await act(() => {
+      useStore.setState({ balanceInCents: 12_300 })
+    })
+
+    await act(() => {
+      result.current.handleResetBalancePress()
+    })
+
+    const buttons = alertSpy.mock.calls[0]?.[2] ?? []
+
+    expect(useStore.getState().balanceInCents).toBe(12_300)
+
+    await act(() => {
+      buttons.find(button => button.style === 'destructive')?.onPress?.()
+    })
+
+    expect(useStore.getState().balanceInCents).toBe(INITIAL_BALANCE_IN_CENTS)
+
+    alertSpy.mockRestore()
   })
 
   it('exposes the wallet balance in cents and follows it', async () => {
