@@ -27,3 +27,19 @@ jest.mock('@mysteryScene', () => {
     MysterySceneView: View,
   }
 })
+
+// No native file system in the tests: the saved state does not exist and writing it does nothing.
+jest.mock('expo-file-system', () => ({
+  Paths: { document: 'document' },
+  File: class {
+    exists = false
+
+    create = jest.fn()
+
+    textSync() {
+      return ''
+    }
+
+    writeSync = jest.fn()
+  },
+}))

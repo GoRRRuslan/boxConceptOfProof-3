@@ -43,6 +43,8 @@ export interface ICatalogueFacade {
   isLoadingBoxes: boolean
   // False until the 3D scene is ready to be shown: the loader stays up until then, the list is hidden.
   isSceneReady: boolean
+  // Changes when the 3D scene has to be built anew (back from the background).
+  sceneEpoch: number
   isErrorBoxes: boolean
   cards: ICatalogueCard[]
   viewport: ICatalogueViewport | null

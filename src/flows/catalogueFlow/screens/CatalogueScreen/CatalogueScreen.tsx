@@ -31,6 +31,7 @@ const CatalogueScreen = () => {
     retryLabelText,
     isLoadingBoxes,
     isSceneReady,
+    sceneEpoch,
     isErrorBoxes,
     cards,
     listRef,
@@ -64,6 +65,7 @@ const CatalogueScreen = () => {
   const renderScene = () => (
     <View style={styles.sceneLayer} pointerEvents="none">
       <CatalogueScene
+        key={sceneEpoch}
         cardLooks={sceneCardLooks}
         scrollViewTag={scrollViewTag}
         isFrameStatsEnabled={isPerformanceOverlayVisible}

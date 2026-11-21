@@ -3,7 +3,7 @@ import { useNavigation } from '@react-navigation/native'
 import type { FlashListRef } from '@shopify/flash-list'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent } from 'react-native'
+import { AppState, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
 
 import {
   CARD_HEIGHT,
@@ -25,6 +25,10 @@ import { ETabRoute, type TTabParamList } from '@navigation/_types'
 import { useGetBoxesQuery } from '@networking/requests/queries/BoxQueries/useGetBoxesQuery'
 import { useRenderFpsMeter } from '@services/performance/useRenderFpsMeter'
 
+// Back from the background after at least this long: the 3D view is rebuilt (iOS may have taken its drawing surface away).
+const REBUILD_SCENE_AFTER_BACKGROUND_MILLISECONDS = 1500
+// An opening in one of these phases is closed when the user leaves the Boxes tab.
+const LEAVE_TAB_CLOSES_PHASES = [EOpeningPhase.Inspecting, EOpeningPhase.Ready, EOpeningPhase.Revealed]
 // Measurement builds show the live frame-rate overlay: EXPO_PUBLIC_SHOW_PERFORMANCE=1
 const IS_PERFORMANCE_OVERLAY_VISIBLE = process.env.EXPO_PUBLIC_SHOW_PERFORMANCE === '1'
 // Measurement builds can scroll the list up and down by themselves: EXPO_PUBLIC_AUTO_SCROLL=1
@@ -54,6 +58,9 @@ export const useCatalogueFacade = (): ICatalogueFacade => {
   // The native scene says its model is loaded; the scene counts as ready a little later (boxes popped in, frames steady).
   const [isModelLoaded, setIsModelLoaded] = useState<boolean>(false)
   const [isSceneReady, setIsSceneReady] = useState<boolean>(false)
+  // Bumped when the app comes back after a while in the background: the 3D scene is built anew (see the effect below).
+  const [sceneEpoch, setSceneEpoch] = useState<number>(0)
+  const backgroundedAt = useRef<number | null>(null)
 
   // --------------------------- Store ------------------------- //
   const balanceInCents = useStore(state => state.balanceInCents)
@@ -66,6 +73,7 @@ export const useCatalogueFacade = (): ICatalogueFacade => {
 
   // ------------------------- Opening -------------------------- //
   const opening = useOpeningFacade({ boxesData, cards })
+  const openingRef = useRef(opening)
 
   // -------------------------- Values ------------------------- //
   const sceneCardLooks = useMemo(
@@ -120,6 +128,55 @@ export const useCatalogueFacade = (): ICatalogueFacade => {
       setScrollViewTag(typeof scrollableNode === 'number' ? scrollableNode : null)
     }
   }, [viewport, cards.length])
+
+  useEffect(() => {
+    openingRef.current = opening
+  })
+
+  // After a stay in the background the 3D view could show frozen boxes or a box left over from an opening: the drawing surface is rebuilt,
+  // and the scene redraws everything from the opening state, which is the single truth.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextState => {
+      if (nextState === 'background') {
+        backgroundedAt.current = Date.now()
+
+        return
+      }
+
+      if (nextState !== 'active' || backgroundedAt.current === null) {
+        return
+      }
+
+      const awayMilliseconds = Date.now() - backgroundedAt.current
+
+      backgroundedAt.current = null
+
+      if (awayMilliseconds >= REBUILD_SCENE_AFTER_BACKGROUND_MILLISECONDS) {
+        logDiagnostic('scene.rebuild', { awayMilliseconds })
+
+        setSceneEpoch(previous => previous + 1)
+      }
+    })
+
+    return () => {
+      subscription.remove()
+    }
+  }, [])
+
+  // Leaving the Boxes tab puts an opened box away: coming back shows the list, not the box that was open.
+  useEffect(() => {
+    const unsubscribeBlur = navigation.addListener('blur', () => {
+      logDiagnostic('tab.blur', { tab: 'catalogue' })
+
+      if (LEAVE_TAB_CLOSES_PHASES.includes(openingRef.current.phase)) {
+        openingRef.current.handleBackPress()
+      }
+    })
+
+    return () => {
+      unsubscribeBlur()
+    }
+  }, [navigation])
 
   // While a prize is shown the tab bar is not needed: Done leads back to the list.
   const isTabBarHidden = opening.phase === EOpeningPhase.Revealed
@@ -185,6 +242,7 @@ export const useCatalogueFacade = (): ICatalogueFacade => {
     retryLabelText: t('catalogue.retry'),
     isLoadingBoxes,
     isSceneReady,
+    sceneEpoch,
     isErrorBoxes,
     cards,
     viewport,

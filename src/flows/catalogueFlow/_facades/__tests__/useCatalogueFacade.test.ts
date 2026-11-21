@@ -12,7 +12,7 @@ import { BOX_CATALOGUE } from '@networking/api/MysteryBoxApi/_mockData/boxCatalo
 
 const mockSetParams = jest.fn()
 
-jest.mock('@react-navigation/native', () => ({ useNavigation: () => ({ setParams: mockSetParams }) }))
+jest.mock('@react-navigation/native', () => ({ useNavigation: () => ({ setParams: mockSetParams, addListener: () => () => undefined }) }))
 
 // Short waits for the scene, so that its cases can be tested in real time.
 jest.mock('@flows/catalogueFlow/_config/catalogueLayoutConfig', () => ({

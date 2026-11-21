@@ -7,7 +7,7 @@ Stack: Expo SDK 58 · TypeScript strict · Zustand 5 · React Query 5 · React N
 - Screen = `Screen.tsx` (render methods + one `useXxxFacade()` call), `Screen.styles.ts` (`makeStyles(theme)` with `ScaledSheet`), `index.ts`.
 - Facade section order: translations → navigation → state → store → queries/mutations → adapter → values → handlers → effects, each with a divider comment.
 - Complex logic → `_facadesLogic/`; data mapping → `_adapters/` (pure, `useMemo`, no stores/mutations).
-- Global state in Zustand (session-scoped, no persistence). Server/mock-API state in React Query.
+- Global state in Zustand. Only the balance and the bought watches are saved to a file (`src/services/persistence`), so that they survive the system removing the app from memory in the background; everything else is session-scoped. Server/mock-API state in React Query.
 - **The 3D scene is native.** TypeScript talks to it only through `@mysteryScene` (`modules/mystery-scene/src`): a view with a few props and a handful of synchronous commands. The scene maths and its state machine live in the native module (`SceneCore` in Swift, `math/` in Kotlin); the TypeScript copies in `_facadesLogic/` and `src/services/sceneReference` are the **reference implementation** that generates the shared test vectors. Change a number or a formula in all three places and regenerate the vectors (`UPDATE_SCENE_VECTORS=1 yarn test sceneVectors`).
 
 ## Blockers

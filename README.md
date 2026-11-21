@@ -53,7 +53,7 @@ The TypeScript side follows the conventions of an enterprise React Native app: f
 - ✋ **Inspect with your fingers:** drag with inertia, pinch to zoom, double tap to reset, swipe up to open, device tilt; anticipation shake, animated lid with light from inside, rarity-based reveal (Common → Legendary), sounds and haptics
 - 💸 Purchase with an **exactly-once guarantee** (idempotency keys, atomic state update, lock against repeated taps)
 - 🏗️ Feature-based (flows) architecture, facades, adapters, typed navigation
-- 🔄 Zustand (session-scoped, no persistence) + React Query over an asynchronous mock API with a failure switch
+- 🔄 Zustand (the balance and the bought watches are saved to a file; the rest is session-scoped) + React Query over an asynchronous mock API with a failure switch
 - 🧪 Jest + React Native Testing Library, **XCTest (Swift) and JUnit (Kotlin) parity tests** against a TypeScript reference, ESLint 9 + Prettier, `ciPipeline`
 - 🧩 An **Expo module** (`modules/mystery-scene`), autolinked, with a typed JavaScript API
 - 🌟 A **show around the box**: breathing and flashing seams, a soft light curtain from the open box to the watch, shock waves, sparks, camera punch, lid settle, hold-to-open — bigger for rarer prizes ([docs/EFFECTS.md](docs/EFFECTS.md))
@@ -171,7 +171,7 @@ Two tabs: **Boxes** and **Collection**.
 3. **Buy.** One button. While the purchase runs the button is disabled and you cannot leave. On success the balance drops by the price and the watch is yours; on failure you see why ("Nothing was charged") and can try again.
 4. **Open.** Press the button or swipe up. The box shakes and swells (anticipation), the lid swings open about its hinge and a light of the prize's colour shines from inside.
 5. **Reveal.** A rarity pill (Common, Rare, Epic, Legendary!), the watch in two glowing circles, a flash and particles for the better prizes, then the price, name and brand. After a moment the opened box is put away; only then does **Done** appear. While a prize is shown the tab bar is invisible. **Done** returns to the list.
-6. **Collection tab.** Your watches, newest first, with the total value; tap a row for a large picture; an empty state with a "Browse boxes" button when you have none. A restart starts a new session (nothing is persisted, as required).
+6. **Collection tab.** Your watches, newest first, with the total value; tap a row for a large picture; an empty state with a "Browse boxes" button when you have none. The balance and the bought watches are saved to a file, so they survive the system removing the app from memory in the background.
 
 Detailed write-ups with screenshots of both platforms: [animations](docs/ANIMATIONS.md) · [native scene](docs/NATIVE_SCENE.md) · [3D model](docs/MODEL.md) · [test checklist](docs/TEST_CHECKLIST.md).
 
@@ -476,7 +476,7 @@ boxConceptOfProof-3/
     ├── assets/                       # images/watches/{full,thumb}/*.webp · sounds/*.wav
     ├── components/                   # shared UI: ScreenHeader · AnimatedCurrencyText · FadingView · PerformanceOverlay · AppText · buttons/AppButton · _layout/ScreenContainer
     ├── navigation/                   # tab navigator (hides its bar while a prize is shown), navigation container + theme, route types
-    ├── models/mainStorage/           # WalletStore · CollectionStore · PurchaseStore · _storeConfigured (session-scoped Zustand)
+    ├── models/mainStorage/           # WalletStore · CollectionStore · PurchaseStore · _storeConfigured (Zustand; balance and collection saved to a file)
     ├── networking/                   # api/MysteryBoxApi (mock, prize roll) · requests/{queries,mutations} · errorHandling
     ├── flows/
     │   ├── catalogueFlow/            # _adapters · _config · _facades · _facadesLogic (reference poses, finishes, entrance) · screens/CatalogueScreen (BoxCard, CatalogueScene)

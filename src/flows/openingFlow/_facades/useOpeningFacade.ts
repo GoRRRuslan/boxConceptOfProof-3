@@ -67,6 +67,7 @@ export const useOpeningFacade = ({ boxesData, cards }: IUseOpeningFacadeParams):
   const [errorCode, setErrorCode] = useState<EPurchaseErrorCode | null>(null)
   // The opened box has been put away after the reveal: nothing moves in the 3D scene any more.
   const [isBoxPutAway, setIsBoxPutAway] = useState<boolean>(false)
+  const isPurchaseInFlight = useRef<boolean>(false)
   const openingTimers = useRef<ReturnType<typeof setTimeout>[]>([])
   // After leaving, the box needs a moment to fly back before another one may be selected.
   const selectionLockedUntilMilliseconds = useRef<number>(0)
@@ -124,15 +125,24 @@ export const useOpeningFacade = ({ boxesData, cards }: IUseOpeningFacadeParams):
   }
 
   const handleBuyPress = async () => {
-    if (phase !== EOpeningPhase.Inspecting || !selectedBox) {
+    // One purchase at a time: a second press (a double tap, a press right after coming back to the app) must not buy again.
+    if (phase !== EOpeningPhase.Inspecting || !selectedBox || isPurchaseInFlight.current) {
       return
     }
+
+    isPurchaseInFlight.current = true
 
     setErrorCode(null)
 
     dispatchEvent(EOpeningEvent.PurchasePressed)
 
-    const result = await mutatePurchaseBoxAsync(selectedBox)
+    let result: Awaited<ReturnType<typeof mutatePurchaseBoxAsync>>
+
+    try {
+      result = await mutatePurchaseBoxAsync(selectedBox)
+    } finally {
+      isPurchaseInFlight.current = false
+    }
 
     if (result.status === EBoxPurchaseResultStatus.Success) {
       const { watch } = result.response
